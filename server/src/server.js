@@ -10,7 +10,19 @@ const PORT = process.env.PORT || 5000;
 
 // ===== MIDDLEWARE =====
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      "http://localhost:3000",
+      "http://localhost:3001"
+    ];
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));
@@ -27,7 +39,10 @@ app.get("/api/health", (req, res) => {
 
 // ===== ROUTES =====
 const authRoutes = require("./routes/auth.routes");
+const shopRoutes = require("./routes/shop.routes");
+
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/shops", shopRoutes);
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {

@@ -24,36 +24,36 @@
 
 ### Backend
 
-- [ ] Setup Node.js server (Express hoặc NestJS), cấu trúc folder chuẩn
-- [ ] Kết nối MongoDB Atlas + Mongoose, seed data cơ bản
-- [ ] Cấu hình biến môi trường (`.env`), CORS, error handling middleware
-- [ ] Implement JWT (Access Token 15m + Refresh Token 7d)
-- [ ] Tích hợp Nodemailer — gửi OTP qua email
-- [ ] API: `POST /auth/register` — Gửi OTP đến email
-- [ ] API: `POST /auth/verify-otp` — Xác thực OTP, trả `tempToken`
+- [x] Setup Node.js server (Express hoặc NestJS), cấu trúc folder chuẩn
+- [x] Kết nối MongoDB Atlas + Mongoose, seed data cơ bản
+- [x] Cấu hình biến môi trường (`.env`), CORS, error handling middleware
+- [x] Implement JWT (Access Token 15m + Refresh Token 7d)
+- [x] Tích hợp Nodemailer — gửi OTP qua email
+- [x] API: `POST /auth/register` — Gửi OTP đến email
+- [x] API: `POST /auth/verify-otp` — Xác thực OTP, trả `tempToken`
 - [ ] API: `POST /auth/set-password` — Thiết lập mật khẩu, trả tokens
-- [ ] API: `POST /auth/login` — Đăng nhập bằng email + password
+- [x] API: `POST /auth/login` — Đăng nhập bằng email + password
 - [ ] API: `POST /auth/refresh-token` — Làm mới access token
-- [ ] API: `GET /auth/me` — Lấy thông tin user hiện tại
+- [x] API: `GET /auth/me` — Lấy thông tin user hiện tại
 - [ ] API: `PUT /users/profile` — Cập nhật hồ sơ cá nhân
 - [ ] API: `PUT /users/addresses` — CRUD địa chỉ giao hàng
-- [ ] Middleware: `authenticate` (verify JWT), `authorize(roles[])`
-- [ ] Rate limiting cho OTP (3 lần/15 phút), block sau 5 lần sai
+- [x] Middleware: `authenticate` (verify JWT), `authorize(roles[])`
+- [x] Rate limiting cho OTP (3 lần/15 phút), block sau 5 lần sai
 
 ### Frontend
 
-- [ ] Khởi tạo Next.js 14 (App Router), cấu hình TypeScript
-- [ ] Cấu hình Tailwind CSS — Theme Vàng-Trắng (`primary: #FACC15`, `bg: #FFFFFF`)
-- [ ] Setup Google Fonts (Inter)
-- [ ] Tạo Root Layout (`app/layout.tsx`): Header, Footer, global styles
-- [ ] Component: `Header` (Logo, Search bar, Cart icon, User menu)
+- [x] Khởi tạo Next.js 14 (App Router), cấu hình TypeScript
+- [x] Cấu hình Tailwind CSS — Theme Vàng-Trắng (`primary: #FACC15`, `bg: #FFFFFF`)
+- [x] Setup Google Fonts (Inter)
+- [x] Tạo Root Layout (`app/layout.tsx`): Header, Footer, global styles
+- [x] Component: `Header` (Logo, Search bar, Cart icon, User menu)
 - [ ] Component: `Footer` (Links, Copyright)
-- [ ] Trang Đăng ký — `/register` **(CSR)**: Form email → OTP → Set password
-- [ ] Trang Đăng nhập — `/login` **(CSR)**: Form email + password
+- [x] Trang Đăng ký — `/register` **(CSR)**: Form email → OTP → Set password
+- [x] Trang Đăng nhập — `/login` **(CSR)**: Form email + password
 - [ ] Trang Hồ sơ — `/user/profile` **(CSR)**: Chỉnh sửa thông tin, avatar, địa chỉ
-- [ ] Auth Context/Provider: Quản lý state đăng nhập, token storage
+- [x] Auth Context/Provider: Quản lý state đăng nhập, token storage
 - [ ] Protected Route HOC: Redirect nếu chưa đăng nhập
-- [ ] Toast notification component (success/error feedback)
+- [x] Toast notification component (success/error feedback)
 
 ### Kết quả Phase 1
 

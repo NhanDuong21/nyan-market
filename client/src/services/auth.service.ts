@@ -128,3 +128,29 @@ export async function loginUser(
     throw new Error("Không thể kết nối đến server");
   }
 }
+
+export async function getMe(): Promise<{ success: boolean; data?: { user: UserData } }> {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) throw new Error("No token found");
+
+    const res = await fetch(`${API_URL}/auth/me`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Không thể lấy thông tin người dùng");
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error("Không thể kết nối đến server");
+  }
+}

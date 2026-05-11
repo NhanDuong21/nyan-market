@@ -265,8 +265,39 @@ const login = async (req, res) => {
   }
 };
 
+// ===== 4. GET ME =====
+// GET /api/v1/auth/me
+// Headers: Authorization: Bearer <token>
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin người dùng",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy thông tin thành công",
+      data: {
+        user: user.toSafeObject(),
+      },
+    });
+  } catch (error) {
+    console.error("Get Me Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi server. Vui lòng thử lại.",
+    });
+  }
+};
+
 module.exports = {
   register,
   verifyOtp,
   login,
+  getMe,
 };

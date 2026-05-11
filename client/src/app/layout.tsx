@@ -15,6 +15,9 @@ export const metadata: Metadata = {
     "Nyan Market - Nền tảng thương mại điện tử đa người bán. Mua sắm hàng triệu sản phẩm với giá tốt nhất.",
 };
 
+import AuthProvider from "@/components/auth/AuthProvider";
+import HeaderWrapper from "@/components/layout/HeaderWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <AuthProvider>
+          <HeaderWrapper />
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -71,7 +71,6 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true, // Cho phép null nhưng unique khi có giá trị
       match: [/^(0|\+84)[0-9]{9}$/, "Số điện thoại không hợp lệ"],
-      default: null,
     },
     avatar: {
       type: String, // Cloudinary URL

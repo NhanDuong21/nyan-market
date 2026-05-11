@@ -173,23 +173,18 @@ const userSchema = new mongoose.Schema(
 );
 
 // ===== INDEXES =====
-userSchema.index({ email: 1 });
+// email index is auto-created by unique: true on the field
 userSchema.index({ status: 1, roles: 1 });
 
 // ===== HOOKS =====
 
 // Pre-save: Hash password trước khi lưu vào DB
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   // Chỉ hash khi password bị thay đổi (tạo mới hoặc cập nhật)
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) return;
 
-  try {
-    const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // ===== INSTANCE METHODS =====

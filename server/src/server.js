@@ -25,9 +25,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ===== ROUTES (sẽ bổ sung ở Phase 1) =====
-// app.use("/api/auth", require("./routes/auth"));
-// app.use("/api/users", require("./routes/users"));
+// ===== ROUTES =====
+const authRoutes = require("./routes/auth.routes");
+app.use("/api/v1/auth", authRoutes);
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {

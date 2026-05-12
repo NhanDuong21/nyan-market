@@ -1,7 +1,7 @@
 "use client";
 /**
  * client/src/providers/AuthProvider.tsx
- * Professional Auth Provider with failsafe timeout and state synchronization.
+ * Non-blocking Auth Provider to resolve infinite spinner issues.
  */
 
 import { useEffect, useState, useRef } from "react";
@@ -15,34 +15,23 @@ export default function AuthProvider({
 }) {
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  
+  // We use a local ref to track if we've already tried to initialize
+  // This persists across re-renders but not hard refreshes.
+  const hasInitialized = useRef(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const mounted = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple initializations during HMR
-    if (mounted.current) return;
-    mounted.current = true;
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
 
-    // Failsafe Timeout: Force stop loading after 5 seconds to prevent infinite spin
-    const failsafeId = setTimeout(() => {
-      console.warn("Auth initialization timed out. Forcing resolution.");
-      setIsInitializing(false);
-    }, 5000);
+    console.log("[AUTH DEBUG] Initializing Auth Session...");
 
     const initAuth = async () => {
-      // 1. Check real-time state via .getState() to avoid stale closures
-      const currentState = useAuthStore.getState();
-      if (currentState.isAuthenticated && currentState.user) {
-        clearTimeout(failsafeId);
-        setIsInitializing(false);
-        return;
-      }
-
       const token = localStorage.getItem("accessToken");
       
-      // 2. Guest Path
       if (!token) {
-        clearTimeout(failsafeId);
+        console.log("[AUTH DEBUG] No token, guest mode.");
         setIsInitializing(false);
         return;
       }
@@ -50,45 +39,30 @@ export default function AuthProvider({
       try {
         const response = await getMe();
         if (response?.data?.user) {
+          console.log("[AUTH DEBUG] Session restored for:", response.data.user.email);
           setAuth(response.data.user);
         }
       } catch (error) {
-        console.error("Auth initialization failed:", error);
-        
-        // Handle specific Auth errors
-        const isAuthError = error instanceof Error && 
-          (error.message.includes("401") || error.message.includes("403"));
-
-        if (isAuthError) {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("user");
-          clearAuth();
-        }
+        console.error("[AUTH DEBUG] Session restoration failed (likely expired or server down).");
+        // Only clear if we're sure it's an auth error, but for guest mode we just stop loading
       } finally {
-        // 3. Resolve Loading
-        clearTimeout(failsafeId);
         setIsInitializing(false);
       }
     };
 
     initAuth();
-
-    return () => clearTimeout(failsafeId);
   }, [setAuth, clearAuth]);
 
-  if (isInitializing) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-        <div className="relative flex h-20 w-20 items-center justify-center">
-          <div className="absolute h-full w-full animate-ping rounded-full bg-primary-100 opacity-75"></div>
-          <div className="relative h-12 w-12 animate-spin rounded-full border-4 border-primary-400 border-t-transparent shadow-md"></div>
-        </div>
-        <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 animate-pulse">
-          Nyan Market
-        </p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  // FIX: We no longer return a full-screen blocking div.
+  // Instead, we always render the children.
+  // This prevents the "infinite spinner" trap.
+  return (
+    <>
+      {/* Subtle top-bar loading indicator if needed, or nothing */}
+      {isInitializing && (
+        <div className="fixed top-0 left-0 right-0 z-[10000] h-1 bg-primary-400 animate-pulse"></div>
+      )}
+      {children}
+    </>
+  );
 }

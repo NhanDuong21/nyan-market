@@ -20,7 +20,7 @@ const generateSlug = (name) => {
 // Headers: Authorization: Bearer <token>
 const registerShop = async (req, res) => {
   try {
-    const { shopName, description, phone, address, categories } = req.body;
+    const { shopName, description, phone, address, categories, categoryIds } = req.body;
     const userId = req.user.id;
 
     // 1. Kiểm tra User đã có shop chưa
@@ -82,10 +82,11 @@ const registerShop = async (req, res) => {
       slugCounter++;
     }
 
-    // Parse categories if stringified
+    // Parse categories / categoryIds if stringified
     let parsedCategories = [];
     try {
-      parsedCategories = typeof categories === "string" ? JSON.parse(categories) : (categories || []);
+      const rawCategories = categoryIds || categories;
+      parsedCategories = typeof rawCategories === "string" ? JSON.parse(rawCategories) : (rawCategories || []);
     } catch(e) {}
 
     // 6. Lưu thông tin quán mới

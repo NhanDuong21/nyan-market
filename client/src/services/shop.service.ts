@@ -60,7 +60,7 @@ export async function registerShop(
 
     const data: RegisterShopResponse = await res.json();
 
-    if (!res.ok) {
+    if (!res.ok || !data.success) {
       throw new Error(data.message || "Đăng ký mở quán thất bại");
     }
 

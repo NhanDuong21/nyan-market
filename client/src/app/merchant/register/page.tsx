@@ -205,6 +205,13 @@ export default function MerchantRegisterPage() {
   };
 
   const handleSubmit = async () => {
+    // 1. Re-validate all fields before sending
+    if (!validate()) {
+      toast.error("Vui lòng kiểm tra lại thông tin shop (Bước 1)");
+      setCurrentStep(1);
+      return;
+    }
+
     if (!idCardFrontFile || !idCardBackFile) {
       toast.error("Vui lòng tải lên cả 2 mặt CMND/CCCD");
       return;
@@ -228,10 +235,14 @@ export default function MerchantRegisterPage() {
       formData.append("idCardFront", idCardFrontFile);
       formData.append("idCardBack", idCardBackFile);
 
-      await registerShop(formData);
+      const res = await registerShop(formData);
 
-      toast.success("Gửi hồ sơ thành công!");
-      setCurrentStep(4);
+      if (res.success) {
+        toast.success("Gửi hồ sơ thành công!");
+        setCurrentStep(4);
+      } else {
+        throw new Error(res.message || "Đăng ký thất bại");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {

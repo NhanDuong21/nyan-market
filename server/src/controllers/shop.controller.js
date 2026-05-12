@@ -2,6 +2,8 @@
 const Shop = require("../models/Shop");
 const User = require("../models/User");
 
+const cloudinary = require("../config/cloudinary");
+
 // Helper: Chuyển đổi tên shop thành slug URL-friendly
 const generateSlug = (name) => {
   return name
@@ -30,8 +32,19 @@ const registerShop = async (req, res) => {
       });
     }
 
+    // Parse address since it might be sent as a stringified JSON in FormData
+    let parsedAddress;
+    try {
+      parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message: "Định dạng địa chỉ không hợp lệ",
+      });
+    }
+
     // 2. Validate input cơ bản
-    if (!shopName || !phone || !address || !address.province || !address.district || !address.ward || !address.street) {
+    if (!shopName || !phone || !parsedAddress || !parsedAddress.province || !parsedAddress.district || !parsedAddress.ward || !parsedAddress.street) {
       return res.status(400).json({
         success: false,
         message: "Vui lòng điền đầy đủ thông tin bắt buộc (Tên quán, SĐT, Địa chỉ)",
@@ -47,30 +60,49 @@ const registerShop = async (req, res) => {
       });
     }
 
-    // 4. Tạo slug từ Tên quán
+    // 4. Lấy URLs từ file upload
+    let idCardFrontUrl = "";
+    let idCardBackUrl = "";
+    if (req.files) {
+      if (req.files.idCardFront && req.files.idCardFront.length > 0) {
+        idCardFrontUrl = req.files.idCardFront[0].path; // Cloudinary URL
+      }
+      if (req.files.idCardBack && req.files.idCardBack.length > 0) {
+        idCardBackUrl = req.files.idCardBack[0].path;
+      }
+    }
+
+    // 5. Tạo slug từ Tên quán
     let baseSlug = generateSlug(shopName);
     let slug = baseSlug;
     let slugCounter = 1;
     
-    // Đảm bảo slug là duy nhất
     while (await Shop.findOne({ slug })) {
       slug = `${baseSlug}-${slugCounter}`;
       slugCounter++;
     }
 
-    // 5. Lưu thông tin quán mới (status: 'pending' mặc định theo Schema)
+    // Parse categories if stringified
+    let parsedCategories = [];
+    try {
+      parsedCategories = typeof categories === "string" ? JSON.parse(categories) : (categories || []);
+    } catch(e) {}
+
+    // 6. Lưu thông tin quán mới
     const newShop = await Shop.create({
       owner: userId,
       shopName,
       slug,
       description: description || "",
       phone,
-      address,
-      categories: categories || [],
+      address: parsedAddress,
+      categories: parsedCategories,
+      kyc: {
+        idCardFront: idCardFrontUrl,
+        idCardBack: idCardBackUrl,
+        submittedAt: new Date(),
+      }
     });
-
-    // Option: Tự động cập nhật role của User thành 'merchant' hoặc chỉ cập nhật khi admin duyệt.
-    // Ở đây ta giữ nguyên role là user cho đến khi admin duyệt (Phase 5).
 
     return res.status(201).json({
       success: true,
@@ -82,6 +114,16 @@ const registerShop = async (req, res) => {
 
   } catch (error) {
     console.error("Register Shop Error:", error.message);
+    
+    // Xóa ảnh đã upload lên Cloudinary nếu lưu DB thất bại
+    if (req.files) {
+      if (req.files.idCardFront && req.files.idCardFront[0].filename) {
+        await cloudinary.uploader.destroy(req.files.idCardFront[0].filename).catch(console.error);
+      }
+      if (req.files.idCardBack && req.files.idCardBack[0].filename) {
+        await cloudinary.uploader.destroy(req.files.idCardBack[0].filename).catch(console.error);
+      }
+    }
     
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((e) => e.message);

@@ -14,13 +14,16 @@ import {
   Truck,
   ShieldCheck,
   PartyPopper,
-  Plus
+  Plus,
+  UploadCloud
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { registerShop } from "@/services/shop.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 // ===== SUB-COMPONENTS (Tách ra ngoài scope main để tối ưu) =====
+// ... existing Stepper and FormField components remain unchanged
+// I will not replace them here, just the main component part
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
   const steps = [
@@ -107,7 +110,6 @@ export default function MerchantRegisterPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
 
-  // 1. Fix State isMounted
   const [isMounted, setIsMounted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -125,18 +127,30 @@ export default function MerchantRegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
 
+  // KYC Upload States
+  const [idCardFrontFile, setIdCardFrontFile] = useState<File | null>(null);
+  const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
+  const [idCardFrontPreview, setIdCardFrontPreview] = useState("");
+  const [idCardBackPreview, setIdCardBackPreview] = useState("");
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // 2. Redirect logic an toàn
   useEffect(() => {
     if (isMounted && !isAuthenticated && !localStorage.getItem("accessToken")) {
       router.push("/login?redirect=/merchant/register");
     }
   }, [isMounted, isAuthenticated, router]);
 
-  // UI Loading khi chưa mounted
+  // Clean up object URLs
+  useEffect(() => {
+    return () => {
+      if (idCardFrontPreview) URL.revokeObjectURL(idCardFrontPreview);
+      if (idCardBackPreview) URL.revokeObjectURL(idCardBackPreview);
+    };
+  }, [idCardFrontPreview, idCardBackPreview]);
+
   if (!isMounted) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-gray-50">
@@ -171,20 +185,50 @@ export default function MerchantRegisterPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước file vượt quá 5MB");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    if (type === 'front') {
+      setIdCardFrontFile(file);
+      setIdCardFrontPreview(previewUrl);
+    } else {
+      setIdCardBackFile(file);
+      setIdCardBackPreview(previewUrl);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!idCardFrontFile || !idCardBackFile) {
+      toast.error("Vui lòng tải lên cả 2 mặt CMND/CCCD");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await registerShop({
-        shopName: form.shopName,
-        phone: form.phone || user?.phone || "",
-        description: form.description,
-        address: {
-          province: form.province,
-          district: form.district,
-          ward: form.ward,
-          street: form.street,
-        },
-      });
+      const formData = new FormData();
+      formData.append("shopName", form.shopName);
+      formData.append("phone", form.phone || user?.phone || "");
+      formData.append("description", form.description);
+      
+      const addressObject = {
+        province: form.province,
+        district: form.district,
+        ward: form.ward,
+        street: form.street,
+      };
+      formData.append("address", JSON.stringify(addressObject));
+      
+      formData.append("idCardFront", idCardFrontFile);
+      formData.append("idCardBack", idCardBackFile);
+
+      await registerShop(formData);
 
       toast.success("Gửi hồ sơ thành công!");
       setCurrentStep(4);
@@ -368,17 +412,68 @@ export default function MerchantRegisterPage() {
               <div className="flex h-full flex-col items-center justify-center space-y-4 py-20">
                 <ShieldCheck size={60} className="text-primary-400" />
                 <h3 className="text-xl font-bold">Thông tin định danh</h3>
-                <p className="max-w-md text-center text-gray-500 text-sm">
-                  Vui lòng chuẩn bị CMND/CCCD để xác minh danh tính ở bước cuối cùng sau khi hoàn thành form này.
+                <p className="max-w-md text-center text-gray-500 text-sm mb-6">
+                  Vui lòng tải lên ảnh chụp mặt trước và mặt sau CMND/CCCD của bạn để xác minh danh tính.
                 </p>
+                
+                <div className="grid w-full max-w-2xl grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Front ID Card */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-gray-700">Ảnh mặt trước <span className="text-red-500">*</span></label>
+                    <label className="relative flex h-40 cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors overflow-hidden">
+                      {idCardFrontPreview ? (
+                        <img src={idCardFrontPreview} alt="Mặt trước" className="h-full w-full object-cover" />
+                      ) : (
+                        <>
+                          <UploadCloud className="mb-2 text-gray-400" size={32} />
+                          <span className="text-xs font-medium text-gray-500">Tải ảnh lên (Tối đa 5MB)</span>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleFileChange(e, 'front')}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Back ID Card */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-gray-700">Ảnh mặt sau <span className="text-red-500">*</span></label>
+                    <label className="relative flex h-40 cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors overflow-hidden">
+                      {idCardBackPreview ? (
+                        <img src={idCardBackPreview} alt="Mặt sau" className="h-full w-full object-cover" />
+                      ) : (
+                        <>
+                          <UploadCloud className="mb-2 text-gray-400" size={32} />
+                          <span className="text-xs font-medium text-gray-500">Tải ảnh lên (Tối đa 5MB)</span>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleFileChange(e, 'back')}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <button 
                   type="button"
                   onClick={handleSubmit}
                   disabled={isLoading}
-                  className="mt-4 flex items-center justify-center gap-2 rounded-sm bg-primary-400 px-10 py-3 font-bold text-neutral-900 shadow-sm hover:bg-primary-500 disabled:opacity-50"
+                  className="mt-8 flex w-full max-w-2xl items-center justify-center gap-2 rounded-sm bg-primary-400 px-10 py-3 font-bold text-neutral-900 shadow-sm hover:bg-primary-500 disabled:opacity-50"
                 >
-                  {isLoading && <Loader2 size={18} className="animate-spin" />}
-                  Gửi hồ sơ đăng ký
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Đang xử lý hồ sơ...
+                    </>
+                  ) : (
+                    "Hoàn tất & Gửi hồ sơ"
+                  )}
                 </button>
               </div>
             )}

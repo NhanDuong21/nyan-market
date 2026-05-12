@@ -35,19 +35,27 @@ export interface RegisterShopResponse extends ApiResponse {
 // ===== API FUNCTIONS =====
 
 export async function registerShop(
-  payload: RegisterShopPayload
+  payload: RegisterShopPayload | FormData
 ): Promise<RegisterShopResponse> {
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (!token) throw new Error("Vui lòng đăng nhập trước khi đăng ký shop.");
 
+    const isFormData = payload instanceof FormData;
+    
+    // Do not set Content-Type if FormData, let browser set boundary
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${token}`
+    };
+    
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const res = await fetch(`${API_URL}/shops/register`, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body: isFormData ? payload : JSON.stringify(payload),
     });
 
     const data: RegisterShopResponse = await res.json();

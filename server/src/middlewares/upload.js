@@ -5,10 +5,15 @@ const cloudinary = require("../config/cloudinary");
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: "nyan-market/kyc",
-    allowed_formats: ["jpg", "jpeg", "png"],
-    // transformation: [{ width: 1000, crop: "limit" }], // Optional resize
+  params: async (req, file) => {
+    let folder = "nyan-market/misc";
+    if (req.baseUrl.includes("shops")) folder = "nyan-market/kyc";
+    if (req.baseUrl.includes("products")) folder = "nyan-market/products";
+    
+    return {
+      folder: folder,
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    };
   },
 });
 

@@ -1,6 +1,6 @@
-// server/src/controllers/product.controller.js
 const Product = require("../models/Product");
 const Shop = require("../models/Shop");
+const Category = require("../models/Category");
 const cloudinary = require("../config/cloudinary");
 
 /**

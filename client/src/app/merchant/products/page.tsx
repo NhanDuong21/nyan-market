@@ -24,30 +24,50 @@ export default function MerchantProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Strict early return if data is already cached
+    if (products.length > 0) {
+      setIsLoading(false);
+      return; 
+    }
+
     const fetchMyProducts = async () => {
       try {
+        setIsLoading(true);
         const token = localStorage.getItem("accessToken");
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/products/my-products`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+        const res = await fetch(`${apiUrl}/products/my-products`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
+        
         if (data.success) {
-          setProducts(data.data.products);
-        } else {
-          toast.error(data.message || "Không thể lấy danh sách sản phẩm");
+          setProducts(data.data.products || []);
         }
       } catch (error) {
         console.error("Fetch products error:", error);
-        toast.error("Lỗi kết nối đến server");
       } finally {
+        // 2. ABSOLUTE GUARANTEE to turn off spinner (no isMounted checks)
         setIsLoading(false);
       }
     };
 
     fetchMyProducts();
-  }, []);
+
+    // 3. ULTIMATE FAILSAFE: If network hangs, kill spinner after 4 seconds
+    const failsafeTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 4000);
+
+    return () => clearTimeout(failsafeTimer);
+  }, []); // <-- STRICTLY EMPTY DEPENDENCY ARRAY
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -55,49 +75,6 @@ export default function MerchantProductsPage() {
       currency: "VND",
     }).format(price);
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary-400" />
-          <p className="text-sm font-medium text-gray-500">Đang tải danh sách sản phẩm...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="space-y-8">
-        <Toaster position="top-right" />
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý sản phẩm</h1>
-          <Link 
-            href="/merchant/products/new"
-            className="flex items-center gap-2 rounded-lg bg-primary-400 px-6 py-2.5 text-sm font-bold text-neutral-900 shadow-sm transition-all hover:bg-primary-500"
-          >
-            <Plus size={18} />
-            Thêm sản phẩm mới
-          </Link>
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-gray-400">
-            <Package size={32} />
-          </div>
-          <h3 className="mt-4 text-lg font-bold text-gray-900">Bạn chưa đăng sản phẩm nào</h3>
-          <p className="mt-1 text-sm text-gray-500">Hãy bắt đầu kinh doanh bằng cách đăng sản phẩm đầu tiên của bạn.</p>
-          <Link 
-            href="/merchant/products/new"
-            className="mt-6 inline-block rounded-lg border border-primary-400 px-8 py-2 text-sm font-bold text-primary-600 transition-all hover:bg-primary-50"
-          >
-            Đăng sản phẩm ngay
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8">
@@ -116,8 +93,29 @@ export default function MerchantProductsPage() {
         </Link>
       </div>
 
-      {/* Product Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+      {isLoading ? (
+        <div className="flex h-[40vh] items-center justify-center rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary-400" />
+            <p className="text-sm font-medium text-gray-500">Đang tải danh sách sản phẩm...</p>
+          </div>
+        </div>
+      ) : products.length === 0 ? (
+        <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-gray-400">
+            <Package size={32} />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-gray-900">Bạn chưa đăng sản phẩm nào</h3>
+          <p className="mt-1 text-sm text-gray-500">Hãy bắt đầu kinh doanh bằng cách đăng sản phẩm đầu tiên của bạn.</p>
+          <Link 
+            href="/merchant/products/new"
+            className="mt-6 inline-block rounded-lg border border-primary-400 px-8 py-2 text-sm font-bold text-primary-600 transition-all hover:bg-primary-50"
+          >
+            Đăng sản phẩm ngay
+          </Link>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -181,7 +179,7 @@ export default function MerchantProductsPage() {
                         <Trash2 size={14} />
                       </button>
                       <Link 
-                        href={`/products/${product._id}`} // Giả định route xem chi tiết
+                        href={`/merchant/products/${product._id}`}
                         className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-500 transition-all hover:bg-blue-50 hover:text-blue-600"
                       >
                         <ExternalLink size={14} />
@@ -194,6 +192,7 @@ export default function MerchantProductsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

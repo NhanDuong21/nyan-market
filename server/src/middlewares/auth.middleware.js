@@ -1,9 +1,11 @@
-// server/src/middlewares/verifyToken.js
+// server/src/middlewares/auth.middleware.js
 const jwt = require("jsonwebtoken");
 
-const verifyToken = (req, res, next) => {
+/**
+ * Middleware xác thực người dùng dựa trên JWT
+ */
+const authenticate = (req, res, next) => {
   try {
-    // Lấy token từ header: Authorization: Bearer <token>
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
@@ -13,7 +15,6 @@ const verifyToken = (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -21,15 +22,11 @@ const verifyToken = (req, res, next) => {
       });
     }
 
-    // Xác thực token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Gán thông tin user vào request object
     req.user = decoded;
-    
     next();
   } catch (error) {
-    console.error("Token Verification Error:", error.message);
+    console.error("Authentication Error:", error.message);
     
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
@@ -46,4 +43,33 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = verifyToken;
+/**
+ * Middleware phân quyền dựa trên roles
+ * @param {string[]} roles - Danh sách các role được phép truy cập
+ */
+const authorize = (roles = []) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Bạn cần đăng nhập để thực hiện hành động này",
+      });
+    }
+
+    const hasRole = roles.some((role) => req.user.roles && req.user.roles.includes(role));
+    
+    if (!hasRole) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền truy cập chức năng này",
+      });
+    }
+
+    next();
+  };
+};
+
+module.exports = {
+  authenticate,
+  authorize,
+};

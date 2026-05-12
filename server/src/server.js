@@ -40,9 +40,11 @@ app.get("/api/health", (req, res) => {
 // ===== ROUTES =====
 const authRoutes = require("./routes/auth.routes");
 const shopRoutes = require("./routes/shop.routes");
+const adminRoutes = require("./routes/admin.routes");
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/shops", shopRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {

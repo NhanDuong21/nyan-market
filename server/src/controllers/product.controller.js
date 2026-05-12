@@ -144,7 +144,44 @@ const getProducts = async (req, res) => {
   }
 };
 
+/**
+ * Lấy danh sách sản phẩm của tôi (Dành cho người bán)
+ * GET /api/v1/products/my-products
+ */
+const getMerchantProducts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Tìm Shop của user này
+    const shop = await Shop.findOne({ owner: userId });
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin Shop của bạn",
+      });
+    }
+
+    // 2. Lấy danh sách sản phẩm thuộc Shop này
+    const products = await Product.find({ shop: shop._id })
+      .populate("category", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách sản phẩm thành công",
+      data: { products },
+    });
+  } catch (error) {
+    console.error("Get Merchant Products Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi server khi lấy danh sách sản phẩm",
+    });
+  }
+};
+
 module.exports = {
   createProduct,
   getProducts,
+  getMerchantProducts,
 };

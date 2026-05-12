@@ -1,7 +1,10 @@
 "use client";
-// client/src/components/auth/AuthProvider.tsx
+/**
+ * client/src/providers/AuthProvider.tsx
+ * Professional Auth Provider with failsafe timeout and state synchronization.
+ */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { getMe } from "@/services/auth.service";
 
@@ -13,12 +16,33 @@ export default function AuthProvider({
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [isInitializing, setIsInitializing] = useState(true);
+  const mounted = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple initializations during HMR
+    if (mounted.current) return;
+    mounted.current = true;
+
+    // Failsafe Timeout: Force stop loading after 5 seconds to prevent infinite spin
+    const failsafeId = setTimeout(() => {
+      console.warn("Auth initialization timed out. Forcing resolution.");
+      setIsInitializing(false);
+    }, 5000);
+
     const initAuth = async () => {
+      // 1. Check real-time state via .getState() to avoid stale closures
+      const currentState = useAuthStore.getState();
+      if (currentState.isAuthenticated && currentState.user) {
+        clearTimeout(failsafeId);
+        setIsInitializing(false);
+        return;
+      }
+
       const token = localStorage.getItem("accessToken");
       
+      // 2. Guest Path
       if (!token) {
+        clearTimeout(failsafeId);
         setIsInitializing(false);
         return;
       }
@@ -27,41 +51,41 @@ export default function AuthProvider({
         const response = await getMe();
         if (response?.data?.user) {
           setAuth(response.data.user);
-        } else {
-          // Response was ok but user data missing - shouldn't happen with correct API
-          throw new Error("Invalid user data");
         }
       } catch (error) {
         console.error("Auth initialization failed:", error);
         
-        // Handle "Failed to fetch" (server down) or "Unauthorized"
-        const isNetworkError = error instanceof TypeError && error.message === "Failed to fetch";
-        const isAuthError = error instanceof Error && (error.message.includes("401") || error.message.includes("403"));
+        // Handle specific Auth errors
+        const isAuthError = error instanceof Error && 
+          (error.message.includes("401") || error.message.includes("403"));
 
-        if (isAuthError || !isNetworkError) {
-          // Clear stale session only if it's an explicit auth error 
-          // or if it's not a temporary network failure
+        if (isAuthError) {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
           clearAuth();
         }
       } finally {
-        // ALWAYS stop loading
+        // 3. Resolve Loading
+        clearTimeout(failsafeId);
         setIsInitializing(false);
       }
     };
 
     initAuth();
+
+    return () => clearTimeout(failsafeId);
   }, [setAuth, clearAuth]);
 
-  // If we're still checking auth status, we can show a global loader
-  // or just return null to prevent flickering. 
-  // For better UX, we could just return children and let components handle it,
-  // but for "Merchant Register" we want to be sure.
   if (isInitializing) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-white">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-400 border-t-transparent"></div>
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
+        <div className="relative flex h-20 w-20 items-center justify-center">
+          <div className="absolute h-full w-full animate-ping rounded-full bg-primary-100 opacity-75"></div>
+          <div className="relative h-12 w-12 animate-spin rounded-full border-4 border-primary-400 border-t-transparent shadow-md"></div>
+        </div>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 animate-pulse">
+          Nyan Market
+        </p>
       </div>
     );
   }

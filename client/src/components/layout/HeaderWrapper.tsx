@@ -7,10 +7,11 @@ import Header from "./Header";
 export default function HeaderWrapper() {
   const pathname = usePathname();
   
-  // Ẩn Header ở các trang auth (login, register)
+  // Ẩn Header ở các trang auth (login, register) và trang merchant
   const isAuthPage = pathname?.startsWith("/login") || pathname?.startsWith("/register");
+  const isMerchantPage = pathname?.startsWith("/merchant");
 
-  if (isAuthPage) {
+  if (isAuthPage || isMerchantPage) {
     return null;
   }
 

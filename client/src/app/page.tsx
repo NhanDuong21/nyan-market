@@ -1,5 +1,4 @@
 // client/src/app/page.tsx
-import Header from "@/components/layout/Header";
 import ProductCard from "@/components/product/ProductCard";
 import { 
   ShoppingBag, 
@@ -40,8 +39,6 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      
       <main>
         {/* Hero Section */}
         <section className="relative overflow-hidden bg-primary-400 py-12">

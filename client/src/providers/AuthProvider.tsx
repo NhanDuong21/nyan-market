@@ -15,11 +15,17 @@ export default function AuthProvider({
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    // Safety timeout: stop loading after 10s no matter what
+    const timeoutId = setTimeout(() => {
+      setIsInitializing(false);
+    }, 10000);
+
     const initAuth = async () => {
       const token = localStorage.getItem("accessToken");
       
       if (!token) {
         setIsInitializing(false);
+        clearTimeout(timeoutId);
         return;
       }
 
@@ -30,16 +36,21 @@ export default function AuthProvider({
         }
       } catch (error) {
         console.error("Auto login failed:", error);
-        // Clear stale data on failure
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-        clearAuth();
+        // Don't clear storage on simple network error, only on 401/403
+        if (error instanceof Error && (error.message.includes("401") || error.message.includes("403"))) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("user");
+          clearAuth();
+        }
       } finally {
         setIsInitializing(false);
+        clearTimeout(timeoutId);
       }
     };
 
     initAuth();
+    
+    return () => clearTimeout(timeoutId);
   }, [setAuth, clearAuth]);
 
   // If we're still checking auth status, we can show a global loader

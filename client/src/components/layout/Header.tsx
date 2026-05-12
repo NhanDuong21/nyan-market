@@ -36,7 +36,7 @@ export default function Header() {
         <div className="mx-auto flex max-w-7xl justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex gap-4">
             <Link 
-              href="/merchant/register" 
+              href={isAuthenticated && user?.roles?.includes("merchant") ? "/merchant/dashboard" : "/merchant/register"} 
               className="flex items-center gap-1 text-[12px] font-medium text-neutral-900 transition-colors hover:text-white"
             >
               <Store size={12} />
@@ -111,10 +111,10 @@ export default function Header() {
                       <p className="truncate text-xs text-neutral-500">{user.email}</p>
                     </div>
                     <div className="py-1">
-                      <Link href="/profile" className="block px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">
+                      <Link href="/user/profile" className="block px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">
                         Tài khoản của tôi
                       </Link>
-                      <Link href="/orders" className="block px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">
+                      <Link href="/user/orders" className="block px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50">
                         Đơn mua
                       </Link>
                       <div className="my-1 h-px bg-neutral-100"></div>

@@ -103,6 +103,48 @@ const createProduct = async (req, res) => {
   }
 };
 
+/**
+ * Lấy danh sách sản phẩm (Công khai cho trang chủ)
+ * GET /api/v1/products
+ */
+const getProducts = async (req, res) => {
+  try {
+    const { category, limit = 20, page = 1 } = req.query;
+    const filter = { status: "active" };
+    
+    if (category) filter.category = category;
+
+    const products = await Product.find(filter)
+      .populate("shop", "shopName slug")
+      .populate("category", "name slug")
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit));
+
+    const total = await Product.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      data: { 
+        products,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(total / Number(limit))
+        }
+      },
+    });
+  } catch (error) {
+    console.error("Get Products Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi server",
+    });
+  }
+};
+
 module.exports = {
   createProduct,
+  getProducts,
 };

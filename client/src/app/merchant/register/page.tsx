@@ -107,7 +107,7 @@ export default function MerchantRegisterPage() {
           <div className="bg-gradient-to-r from-primary-400 to-primary-500 px-8 py-10 text-center">
             <h2 className="text-3xl font-bold text-neutral-900">Trở thành Người bán</h2>
             <p className="mt-2 text-neutral-800">
-              Đăng ký mở quán trên Nyan Market để tiếp cận hàng triệu khách hàng
+              Đăng ký mở shop trên Nyan Market để tiếp cận hàng triệu khách hàng
             </p>
           </div>
 

@@ -30,7 +30,7 @@ export default function AuthProvider({
         }
       } catch (error) {
         console.error("Auto login failed:", error);
-        // Token might be expired or invalid, clear it
+        // Clear stale data on failure
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
         clearAuth();
@@ -42,8 +42,17 @@ export default function AuthProvider({
     initAuth();
   }, [setAuth, clearAuth]);
 
-  // Optional: You could return a loading spinner here if you want to block rendering
-  // until auth state is known, but usually it's better to render children and let
-  // components decide what to show based on `isAuthenticated` state.
+  // If we're still checking auth status, we can show a global loader
+  // or just return null to prevent flickering. 
+  // For better UX, we could just return children and let components handle it,
+  // but for "Merchant Register" we want to be sure.
+  if (isInitializing) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-400 border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }

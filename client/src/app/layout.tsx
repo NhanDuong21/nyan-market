@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "Nyan Market - Nền tảng thương mại điện tử đa người bán. Mua sắm hàng triệu sản phẩm với giá tốt nhất.",
 };
 
-import AuthProvider from "@/components/auth/AuthProvider";
+import AuthProvider from "@/providers/AuthProvider";
 import HeaderWrapper from "@/components/layout/HeaderWrapper";
 
 export default function RootLayout({

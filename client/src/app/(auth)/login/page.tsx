@@ -7,9 +7,11 @@ import Link from "next/link";
 import { Loader2, Eye, EyeOff, Mail, Lock } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { loginUser } from "@/services/auth.service";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
@@ -43,6 +45,9 @@ export default function LoginPage() {
       });
 
       if (data.data) {
+        // Cập nhật Zustand Store trước khi redirect
+        setAuth(data.data.user);
+
         // Lưu token và user vào localStorage
         localStorage.setItem("accessToken", data.data.accessToken);
         localStorage.setItem("user", JSON.stringify(data.data.user));

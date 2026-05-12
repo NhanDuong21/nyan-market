@@ -126,6 +126,7 @@ export default function MerchantRegisterPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [isPhoneEditable, setIsPhoneEditable] = useState(false);
 
   // KYC Upload States
   const [idCardFrontFile, setIdCardFrontFile] = useState<File | null>(null);
@@ -140,8 +141,15 @@ export default function MerchantRegisterPage() {
   useEffect(() => {
     if (isMounted && !isAuthenticated && !localStorage.getItem("accessToken")) {
       router.push("/login?redirect=/merchant/register");
+    } else if (user && isMounted) {
+      // Initialize phone if available, otherwise make it editable by default
+      if (user.phone && !form.phone) {
+        setForm(prev => ({ ...prev, phone: user.phone }));
+      } else if (!user.phone) {
+        setIsPhoneEditable(true);
+      }
     }
-  }, [isMounted, isAuthenticated, router]);
+  }, [isMounted, isAuthenticated, router, user]);
 
   // Clean up object URLs
   useEffect(() => {
@@ -165,6 +173,12 @@ export default function MerchantRegisterPage() {
     if (!form.shopName?.trim()) errs.shopName = "Vui lòng nhập tên shop";
     if (form.shopName?.length > 30) errs.shopName = "Tên shop tối đa 30 ký tự";
     
+    if (!form.phone?.trim()) {
+      errs.phone = "Vui lòng nhập số điện thoại";
+    } else if (!/^(0|\+84)[0-9]{9}$/.test(form.phone)) {
+      errs.phone = "Số điện thoại không hợp lệ";
+    }
+
     if (!form.province) errs.province = "Vui lòng hoàn tất địa chỉ lấy hàng";
 
     setErrors(errs);
@@ -221,7 +235,7 @@ export default function MerchantRegisterPage() {
     try {
       const formData = new FormData();
       formData.append("shopName", form.shopName);
-      formData.append("phone", form.phone || user?.phone || "");
+      formData.append("phone", form.phone);
       formData.append("description", form.description);
       
       const addressObject = {
@@ -396,15 +410,25 @@ export default function MerchantRegisterPage() {
                     </div>
                   </FormField>
 
-                  <FormField label="Số điện thoại">
+                  <FormField label="Số điện thoại" required error={errors.phone}>
                     <div className="flex items-center gap-4">
                       <input
                         type="text"
-                        disabled
-                        value={user?.phone || "Chưa cập nhật"}
-                        className="flex-1 rounded-sm border border-gray-100 bg-gray-50 px-4 py-2 text-sm text-gray-400"
+                        disabled={!isPhoneEditable}
+                        value={form.phone}
+                        onChange={(e) => updateField("phone", e.target.value)}
+                        placeholder="Nhập số điện thoại của shop"
+                        className={`flex-1 rounded-sm border px-4 py-2 text-sm outline-none transition-all
+                          ${!isPhoneEditable ? "border-gray-100 bg-gray-50 text-gray-400" : "bg-white"}
+                          ${errors.phone ? "border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-primary-400 focus:ring-1 focus:ring-primary-100"}`}
                       />
-                      <button type="button" className="text-xs font-medium text-primary-600 hover:underline">Chỉnh sửa</button>
+                      <button 
+                        type="button" 
+                        onClick={() => setIsPhoneEditable(prev => !prev)}
+                        className="text-xs font-medium text-primary-600 hover:underline"
+                      >
+                        {isPhoneEditable ? "Khóa" : "Chỉnh sửa"}
+                      </button>
                     </div>
                   </FormField>
                 </div>

@@ -15,42 +15,43 @@ export default function AuthProvider({
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Safety timeout: stop loading after 10s no matter what
-    const timeoutId = setTimeout(() => {
-      setIsInitializing(false);
-    }, 10000);
-
     const initAuth = async () => {
       const token = localStorage.getItem("accessToken");
       
       if (!token) {
         setIsInitializing(false);
-        clearTimeout(timeoutId);
         return;
       }
 
       try {
         const response = await getMe();
-        if (response.data?.user) {
+        if (response?.data?.user) {
           setAuth(response.data.user);
+        } else {
+          // Response was ok but user data missing - shouldn't happen with correct API
+          throw new Error("Invalid user data");
         }
       } catch (error) {
-        console.error("Auto login failed:", error);
-        // Don't clear storage on simple network error, only on 401/403
-        if (error instanceof Error && (error.message.includes("401") || error.message.includes("403"))) {
+        console.error("Auth initialization failed:", error);
+        
+        // Handle "Failed to fetch" (server down) or "Unauthorized"
+        const isNetworkError = error instanceof TypeError && error.message === "Failed to fetch";
+        const isAuthError = error instanceof Error && (error.message.includes("401") || error.message.includes("403"));
+
+        if (isAuthError || !isNetworkError) {
+          // Clear stale session only if it's an explicit auth error 
+          // or if it's not a temporary network failure
           localStorage.removeItem("accessToken");
           localStorage.removeItem("user");
           clearAuth();
         }
       } finally {
+        // ALWAYS stop loading
         setIsInitializing(false);
-        clearTimeout(timeoutId);
       }
     };
 
     initAuth();
-    
-    return () => clearTimeout(timeoutId);
   }, [setAuth, clearAuth]);
 
   // If we're still checking auth status, we can show a global loader

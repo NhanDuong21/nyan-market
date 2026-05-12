@@ -1,18 +1,116 @@
 "use client";
-// client/src/app/(merchant)/register/page.tsx
+// client/src/app/merchant/register/page.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Store, Phone, MapPin, AlignLeft } from "lucide-react";
+import { 
+  Loader2, 
+  Store, 
+  MapPin, 
+  ChevronRight, 
+  Check, 
+  User as UserIcon,
+  Truck,
+  ShieldCheck,
+  PartyPopper,
+  Plus
+} from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { registerShop } from "@/services/shop.service";
 import { useAuthStore } from "@/store/useAuthStore";
+
+// ===== SUB-COMPONENTS (Tách ra ngoài scope main để tối ưu) =====
+
+const Stepper = ({ currentStep }: { currentStep: number }) => {
+  const steps = [
+    { id: 1, title: "Thông tin Shop", icon: Store },
+    { id: 2, title: "Cài đặt vận chuyển", icon: Truck },
+    { id: 3, title: "Thông tin định danh", icon: ShieldCheck },
+    { id: 4, title: "Hoàn tất", icon: PartyPopper },
+  ];
+
+  return (
+    <div className="border-b border-gray-100 bg-white px-8 py-6">
+      <div className="flex items-center justify-between">
+        {steps.map((step, index) => (
+          <div key={step.id} className="flex flex-1 items-center">
+            <div className="flex flex-col items-center gap-2">
+              <div 
+                className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300
+                  ${currentStep >= step.id 
+                    ? "bg-primary-400 text-neutral-900 ring-4 ring-primary-100" 
+                    : "bg-gray-100 text-gray-400"}`}
+              >
+                {currentStep > step.id ? <Check size={20} strokeWidth={3} /> : <step.icon size={20} />}
+              </div>
+              <span 
+                className={`text-xs font-bold transition-colors duration-300
+                  ${currentStep >= step.id ? "text-neutral-900" : "text-gray-400"}`}
+              >
+                {step.title}
+              </span>
+            </div>
+
+            {index < steps.length - 1 && (
+              <div className="mx-4 h-[2px] flex-1 bg-gray-100">
+                <div 
+                  className="h-full bg-primary-400 transition-all duration-500" 
+                  style={{ width: currentStep > step.id ? "100%" : "0%" }}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const FormField = ({ 
+  label, 
+  required, 
+  children, 
+  error,
+  count,
+  max
+}: { 
+  label: string; 
+  required?: boolean; 
+  children: React.ReactNode; 
+  error?: string;
+  count?: number;
+  max?: number;
+}) => (
+  <div className="grid grid-cols-1 gap-2 md:grid-cols-4 md:gap-8">
+    <div className="flex items-center pt-2 md:justify-end">
+      <label className="text-sm font-medium text-gray-600 text-right">
+        {required && <span className="mr-1 text-red-500">*</span>}
+        {label}
+      </label>
+    </div>
+    <div className="relative md:col-span-3">
+      {children}
+      {max !== undefined && count !== undefined && (
+        <span className="absolute right-3 top-3 text-[10px] text-gray-400">
+          {count}/{max}
+        </span>
+      )}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+    </div>
+  </div>
+);
+
+// ===== MAIN COMPONENT =====
 
 export default function MerchantRegisterPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
 
+  // 1. Fix State isMounted
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  
   const [form, setForm] = useState({
     shopName: "",
     phone: "",
@@ -25,43 +123,60 @@ export default function MerchantRegisterPage() {
   
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
-  // Redirect if not authenticated (can also be handled by an HOC later)
-  if (typeof window !== "undefined" && !isAuthenticated && !localStorage.getItem("accessToken")) {
-    router.push("/login?redirect=/merchant/register");
-    return null;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 2. Redirect logic an toàn
+  useEffect(() => {
+    if (isMounted && !isAuthenticated && !localStorage.getItem("accessToken")) {
+      router.push("/login?redirect=/merchant/register");
+    }
+  }, [isMounted, isAuthenticated, router]);
+
+  // UI Loading khi chưa mounted
+  if (!isMounted) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-gray-50">
+        <Loader2 className="animate-spin text-primary-400" size={48} />
+        <p className="text-sm font-medium text-gray-500">Đang tải trang đăng ký...</p>
+      </div>
+    );
   }
 
   const validate = (): boolean => {
     const errs: { [key: string]: string } = {};
-    if (!form.shopName.trim()) errs.shopName = "Vui lòng nhập tên quán";
-    if (!form.phone.trim()) {
-      errs.phone = "Vui lòng nhập số điện thoại";
-    } else if (!/^(0|\+84)[0-9]{9}$/.test(form.phone)) {
-      errs.phone = "Số điện thoại không hợp lệ";
-    }
-    if (!form.province.trim()) errs.province = "Vui lòng nhập tỉnh/thành phố";
-    if (!form.district.trim()) errs.district = "Vui lòng nhập quận/huyện";
-    if (!form.ward.trim()) errs.ward = "Vui lòng nhập phường/xã";
-    if (!form.street.trim()) errs.street = "Vui lòng nhập tên đường/số nhà";
+    if (!form.shopName?.trim()) errs.shopName = "Vui lòng nhập tên shop";
+    if (form.shopName?.length > 30) errs.shopName = "Tên shop tối đa 30 ký tự";
+    
+    if (!form.province) errs.province = "Vui lòng hoàn tất địa chỉ lấy hàng";
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) {
-      toast.error("Vui lòng kiểm tra lại thông tin nhập.");
-      return;
+  const handleNext = async () => {
+    if (currentStep === 1) {
+      if (validate()) {
+        setCurrentStep(2);
+        window.scrollTo(0, 0);
+      } else {
+        toast.error("Vui lòng hoàn tất thông tin shop");
+      }
+    } else if (currentStep < 4) {
+      setCurrentStep(prev => prev + 1);
+      window.scrollTo(0, 0);
     }
+  };
 
+  const handleSubmit = async () => {
     setIsLoading(true);
     try {
       await registerShop({
         shopName: form.shopName,
-        phone: form.phone,
+        phone: form.phone || user?.phone || "",
         description: form.description,
         address: {
           province: form.province,
@@ -71,8 +186,8 @@ export default function MerchantRegisterPage() {
         },
       });
 
-      toast.success("Đăng ký thành công, vui lòng chờ Admin kiểm duyệt");
-      setTimeout(() => router.push("/merchant/pending"), 2000);
+      toast.success("Gửi hồ sơ thành công!");
+      setCurrentStep(4);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
@@ -85,177 +200,237 @@ export default function MerchantRegisterPage() {
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  return (
-    <>
-      <Toaster position="top-center" />
-      <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
-        
-        {/* Header/Logo */}
-        <div className="mb-8 flex justify-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-400 shadow-sm">
-              <span className="text-2xl font-black text-neutral-900">N</span>
-            </div>
-            <span className="text-2xl font-bold text-neutral-900">Nyan Market</span>
-          </Link>
-        </div>
+  const isAddressFilled = !!(form.province && form.district && form.ward && form.street);
 
-        {/* Form Container */}
-        <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-neutral-200/50">
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <Toaster position="top-center" />
+      
+      {/* Header (Shopee Style) */}
+      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-400 text-neutral-900">
+                <span className="text-lg font-black">N</span>
+              </div>
+              <span className="text-xl font-bold text-neutral-900">Nyan Market</span>
+            </Link>
+            <div className="h-6 w-px bg-gray-200"></div>
+            <span className="text-lg font-medium text-gray-600">Đăng ký người bán</span>
+          </div>
           
-          {/* Top Banner */}
-          <div className="bg-gradient-to-r from-primary-400 to-primary-500 px-8 py-10 text-center">
-            <h2 className="text-3xl font-bold text-neutral-900">Trở thành Người bán</h2>
-            <p className="mt-2 text-neutral-800">
-              Đăng ký mở shop trên Nyan Market để tiếp cận hàng triệu khách hàng
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+              <UserIcon size={16} />
+            </div>
+            <span className="text-sm font-medium text-gray-700">{user?.fullName || "Người dùng"}</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="mx-auto mt-8 max-w-[1000px] px-4 animate-in fade-in duration-500">
+        <div className="overflow-hidden rounded-sm bg-white shadow-sm ring-1 ring-gray-100">
+          
+          <Stepper currentStep={currentStep} />
+
+          <div className="min-h-[500px] p-8 md:p-12">
+            
+            {currentStep === 1 && (
+              <div className="space-y-10">
+                <h3 className="text-xl font-bold text-neutral-900">Thông tin Shop</h3>
+                
+                <div className="space-y-8">
+                  <FormField 
+                    label="Tên Shop" 
+                    required 
+                    error={errors.shopName}
+                    count={form.shopName?.length || 0}
+                    max={30}
+                  >
+                    <input
+                      type="text"
+                      value={form.shopName}
+                      onChange={(e) => updateField("shopName", e.target.value)}
+                      placeholder="Nhập tên shop của bạn"
+                      className={`w-full rounded-sm border px-4 py-2 text-sm outline-none transition-all
+                        ${errors.shopName ? "border-red-500 focus:ring-1 focus:ring-red-100" : "border-gray-200 focus:border-primary-400 focus:ring-1 focus:ring-primary-100"}`}
+                    />
+                  </FormField>
+
+                  <FormField label="Địa chỉ lấy hàng" required error={errors.province}>
+                    <div className="rounded-sm border border-gray-100 bg-gray-50 p-4">
+                      {isAddressFilled ? (
+                        <div className="flex items-start justify-between">
+                          <div className="flex gap-3">
+                            <MapPin className="mt-0.5 text-primary-500" size={18} />
+                            <div>
+                              <p className="text-sm font-bold text-neutral-900">{form.street}</p>
+                              <p className="text-xs text-gray-500">
+                                {form.ward}, {form.district}, {form.province}
+                              </p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setShowAddressForm(true)}
+                            className="text-xs font-medium text-primary-600 hover:underline"
+                          >
+                            Thay đổi
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          type="button"
+                          onClick={() => setShowAddressForm(true)}
+                          className="flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700"
+                        >
+                          <Plus size={18} />
+                          Thêm địa chỉ mới
+                        </button>
+                      )}
+                    </div>
+
+                    {showAddressForm && (
+                      <div className="mt-4 grid grid-cols-2 gap-4 rounded-sm border border-gray-200 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                        <input
+                          placeholder="Tỉnh/Thành phố"
+                          value={form.province}
+                          onChange={(e) => updateField("province", e.target.value)}
+                          className="rounded-sm border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-400"
+                        />
+                        <input
+                          placeholder="Quận/Huyện"
+                          value={form.district}
+                          onChange={(e) => updateField("district", e.target.value)}
+                          className="rounded-sm border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-400"
+                        />
+                        <input
+                          placeholder="Phường/Xã"
+                          value={form.ward}
+                          onChange={(e) => updateField("ward", e.target.value)}
+                          className="rounded-sm border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-400"
+                        />
+                        <input
+                          placeholder="Số nhà, tên đường"
+                          value={form.street}
+                          onChange={(e) => updateField("street", e.target.value)}
+                          className="rounded-sm border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-400"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowAddressForm(false)}
+                          className="col-span-2 rounded-sm bg-gray-800 py-2 text-xs font-bold text-white hover:bg-gray-700"
+                        >
+                          Xác nhận địa chỉ
+                        </button>
+                      </div>
+                    )}
+                  </FormField>
+
+                  <FormField label="Email">
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="text"
+                        disabled
+                        value={user?.email || "Chưa có"}
+                        className="flex-1 rounded-sm border border-gray-100 bg-gray-50 px-4 py-2 text-sm text-gray-400"
+                      />
+                      <button type="button" className="text-xs font-medium text-primary-600 hover:underline">Chỉnh sửa</button>
+                    </div>
+                  </FormField>
+
+                  <FormField label="Số điện thoại">
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="text"
+                        disabled
+                        value={user?.phone || "Chưa cập nhật"}
+                        className="flex-1 rounded-sm border border-gray-100 bg-gray-50 px-4 py-2 text-sm text-gray-400"
+                      />
+                      <button type="button" className="text-xs font-medium text-primary-600 hover:underline">Chỉnh sửa</button>
+                    </div>
+                  </FormField>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div className="flex h-full flex-col items-center justify-center space-y-4 py-20">
+                <Truck size={60} className="text-primary-400" />
+                <h3 className="text-xl font-bold">Cài đặt vận chuyển</h3>
+                <p className="text-center text-gray-500 text-sm">Hệ thống mặc định chọn các đơn vị vận chuyển tiêu chuẩn.<br/>Bạn có thể điều chỉnh sau khi Shop được kích hoạt.</p>
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="flex h-full flex-col items-center justify-center space-y-4 py-20">
+                <ShieldCheck size={60} className="text-primary-400" />
+                <h3 className="text-xl font-bold">Thông tin định danh</h3>
+                <p className="max-w-md text-center text-gray-500 text-sm">
+                  Vui lòng chuẩn bị CMND/CCCD để xác minh danh tính ở bước cuối cùng sau khi hoàn thành form này.
+                </p>
+                <button 
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="mt-4 flex items-center justify-center gap-2 rounded-sm bg-primary-400 px-10 py-3 font-bold text-neutral-900 shadow-sm hover:bg-primary-500 disabled:opacity-50"
+                >
+                  {isLoading && <Loader2 size={18} className="animate-spin" />}
+                  Gửi hồ sơ đăng ký
+                </button>
+              </div>
+            )}
+
+            {currentStep === 4 && (
+              <div className="flex h-full flex-col items-center justify-center space-y-4 py-20 animate-in zoom-in duration-500">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600">
+                  <Check size={40} strokeWidth={3} />
+                </div>
+                <h3 className="text-2xl font-bold text-neutral-900">Đăng ký thành công!</h3>
+                <p className="text-center text-gray-500 text-sm">
+                  Hồ sơ của bạn đang được hệ thống kiểm duyệt.<br/>
+                  Kết quả sẽ được gửi về email trong vòng 24h làm việc.
+                </p>
+                <Link 
+                  href="/"
+                  className="mt-6 rounded-sm border border-gray-200 px-8 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Về trang chủ
+                </Link>
+              </div>
+            )}
+
           </div>
 
-          <form onSubmit={handleSubmit} className="px-8 py-10">
-            <div className="space-y-6">
-              
-              {/* Shop Name */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-700">
-                  Tên quán <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <input
-                    type="text"
-                    value={form.shopName}
-                    onChange={(e) => updateField("shopName", e.target.value)}
-                    placeholder="Ví dụ: Nyan Fashion"
-                    className={`w-full rounded-xl border bg-neutral-50 py-3 pl-10 pr-4 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                      ${errors.shopName ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                  />
-                </div>
-                {errors.shopName && <p className="mt-1 text-sm text-red-500">{errors.shopName}</p>}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-700">
-                  Số điện thoại quán <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <input
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => updateField("phone", e.target.value)}
-                    placeholder="0912345678"
-                    className={`w-full rounded-xl border bg-neutral-50 py-3 pl-10 pr-4 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                      ${errors.phone ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                  />
-                </div>
-                {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
-              </div>
-
-              {/* Address - Grid */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-700">
-                  Địa chỉ quán <span className="text-red-500">*</span>
-                </label>
-                
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {/* Province */}
-                  <div>
-                    <input
-                      type="text"
-                      value={form.province}
-                      onChange={(e) => updateField("province", e.target.value)}
-                      placeholder="Tỉnh / Thành phố"
-                      className={`w-full rounded-xl border bg-neutral-50 px-4 py-3 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                        ${errors.province ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                    />
-                    {errors.province && <p className="mt-1 text-sm text-red-500">{errors.province}</p>}
-                  </div>
-                  
-                  {/* District */}
-                  <div>
-                    <input
-                      type="text"
-                      value={form.district}
-                      onChange={(e) => updateField("district", e.target.value)}
-                      placeholder="Quận / Huyện"
-                      className={`w-full rounded-xl border bg-neutral-50 px-4 py-3 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                        ${errors.district ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                    />
-                    {errors.district && <p className="mt-1 text-sm text-red-500">{errors.district}</p>}
-                  </div>
-
-                  {/* Ward */}
-                  <div>
-                    <input
-                      type="text"
-                      value={form.ward}
-                      onChange={(e) => updateField("ward", e.target.value)}
-                      placeholder="Phường / Xã"
-                      className={`w-full rounded-xl border bg-neutral-50 px-4 py-3 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                        ${errors.ward ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                    />
-                    {errors.ward && <p className="mt-1 text-sm text-red-500">{errors.ward}</p>}
-                  </div>
-
-                  {/* Street */}
-                  <div>
-                    <input
-                      type="text"
-                      value={form.street}
-                      onChange={(e) => updateField("street", e.target.value)}
-                      placeholder="Số nhà, tên đường"
-                      className={`w-full rounded-xl border bg-neutral-50 px-4 py-3 text-neutral-800 outline-none transition-all focus:bg-white focus:ring-2
-                        ${errors.street ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"}`}
-                    />
-                    {errors.street && <p className="mt-1 text-sm text-red-500">{errors.street}</p>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-700">
-                  Mô tả quán (Tùy chọn)
-                </label>
-                <div className="relative">
-                  <AlignLeft className="absolute left-3 top-3 text-neutral-400" size={18} />
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => updateField("description", e.target.value)}
-                    placeholder="Giới thiệu sơ lược về các sản phẩm bạn bán..."
-                    rows={4}
-                    className="w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 py-3 pl-10 pr-4 text-neutral-800 outline-none transition-all placeholder:text-neutral-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-100"
-                  />
-                </div>
-              </div>
-
-            </div>
-
-            {/* Submit */}
-            <div className="mt-10">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-400 py-4 text-lg font-bold text-neutral-900 shadow-md transition-all hover:bg-primary-500 hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          {currentStep < 4 && (
+            <div className="flex items-center justify-between border-t border-gray-100 bg-white p-6">
+              <button 
+                type="button"
+                onClick={() => currentStep > 1 && setCurrentStep(prev => prev - 1)}
+                className={`text-sm font-medium text-gray-400 hover:text-gray-600 ${currentStep === 1 ? 'invisible' : 'visible'}`}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    Đang gửi đăng ký...
-                  </>
-                ) : (
-                  "Đăng Ký Mở Quán"
-                )}
+                Quay lại
               </button>
-              
-              <p className="mt-4 text-center text-sm text-neutral-500">
-                Bằng việc đăng ký, bạn đồng ý với <a href="#" className="font-medium text-primary-600 underline">Quy chế người bán</a> của Nyan Market.
-              </p>
+              <div className="flex gap-3">
+                <button type="button" className="rounded-sm border border-gray-200 px-8 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  Lưu
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleNext}
+                  className="flex items-center gap-1 rounded-sm bg-primary-400 px-10 py-2 text-sm font-bold text-neutral-900 shadow-sm transition-all hover:bg-primary-500 active:scale-95"
+                >
+                  Tiếp theo
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
-          </form>
+          )}
+
         </div>
-      </div>
-    </>
+      </main>
+    </div>
   );
 }

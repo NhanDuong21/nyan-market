@@ -68,7 +68,16 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   ];
 
   if (!isMounted || !isAuthenticated || !user?.roles?.includes("merchant")) {
-    return null; // Don't flash the layout before redirecting
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-white">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-500 shadow-sm">
+          <Store size={24} className="animate-pulse" />
+        </div>
+        <p className="animate-pulse text-sm font-bold text-gray-500">
+          Đang chuẩn bị không gian làm việc...
+        </p>
+      </div>
+    );
   }
 
   return (

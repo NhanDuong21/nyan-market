@@ -2,22 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Package, Search, Edit2, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, Package, Edit2, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-
-interface Product {
-  _id: string;
-  name: string;
-  images: string[];
-  category: {
-    _id: string;
-    name: string;
-  };
-  price: number;
-  stock: number;
-  status: string;
-  createdAt: string;
-}
+import type { Product } from "@/types";
+import { getMerchantProducts } from "@/services/product.service";
 
 export default function MerchantProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,36 +18,20 @@ export default function MerchantProductsPage() {
       return; 
     }
 
-    const fetchMyProducts = async () => {
+    const fetchProducts = async () => {
       try {
         setIsLoading(true);
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-        const res = await fetch(`${apiUrl}/products/my-products`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-        
-        if (data.success) {
-          setProducts(data.data.products || []);
-        }
+        const data = await getMerchantProducts();
+        setProducts(data);
       } catch (error) {
         console.error("Fetch products error:", error);
       } finally {
-        // 2. ABSOLUTE GUARANTEE to turn off spinner (no isMounted checks)
+        // 2. ABSOLUTE GUARANTEE to turn off spinner
         setIsLoading(false);
       }
     };
 
-    fetchMyProducts();
+    fetchProducts();
 
     // 3. ULTIMATE FAILSAFE: If network hangs, kill spinner after 4 seconds
     const failsafeTimer = setTimeout(() => {

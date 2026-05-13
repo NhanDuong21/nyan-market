@@ -1,6 +1,5 @@
 // server/src/controllers/admin.controller.js
-const Shop = require("../models/Shop");
-const User = require("../models/User");
+const adminService = require("../services/admin.service");
 
 /**
  * Lấy danh sách shop (có lọc theo trạng thái)
@@ -8,13 +7,7 @@ const User = require("../models/User");
  */
 const getShops = async (req, res) => {
   try {
-    const { status } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-
-    const shops = await Shop.find(filter)
-      .populate("owner", "fullName email phone")
-      .sort({ createdAt: -1 });
+    const shops = await adminService.getShops(req.query.status);
 
     return res.status(200).json({
       success: true,
@@ -35,36 +28,7 @@ const getShops = async (req, res) => {
  */
 const approveShop = async (req, res) => {
   try {
-    const { id } = req.params;
-    const adminId = req.user.id;
-
-    const shop = await Shop.findById(id);
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy shop",
-      });
-    }
-
-    if (shop.status === "active") {
-      return res.status(400).json({
-        success: false,
-        message: "Shop đã được phê duyệt trước đó",
-      });
-    }
-
-    // Cập nhật trạng thái Shop
-    shop.status = "active";
-    shop.approvedAt = new Date();
-    shop.approvedBy = adminId;
-    await shop.save();
-
-    // Cập nhật Role cho User chủ shop
-    const user = await User.findById(shop.owner);
-    if (user && !user.roles.includes("merchant")) {
-      user.roles.push("merchant");
-      await user.save();
-    }
+    await adminService.approveShop(req.params.id, req.user.id);
 
     return res.status(200).json({
       success: true,
@@ -72,9 +36,9 @@ const approveShop = async (req, res) => {
     });
   } catch (error) {
     console.error("Admin Approve Shop Error:", error.message);
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Đã xảy ra lỗi server",
+      message: error.message || "Đã xảy ra lỗi server",
     });
   }
 };
@@ -85,7 +49,6 @@ const approveShop = async (req, res) => {
  */
 const rejectShop = async (req, res) => {
   try {
-    const { id } = req.params;
     const { rejectionReason } = req.body;
 
     if (!rejectionReason) {
@@ -95,17 +58,7 @@ const rejectShop = async (req, res) => {
       });
     }
 
-    const shop = await Shop.findById(id);
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy shop",
-      });
-    }
-
-    shop.status = "rejected";
-    shop.rejectionReason = rejectionReason;
-    await shop.save();
+    await adminService.rejectShop(req.params.id, rejectionReason);
 
     return res.status(200).json({
       success: true,
@@ -113,9 +66,9 @@ const rejectShop = async (req, res) => {
     });
   } catch (error) {
     console.error("Admin Reject Shop Error:", error.message);
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Đã xảy ra lỗi server",
+      message: error.message || "Đã xảy ra lỗi server",
     });
   }
 };

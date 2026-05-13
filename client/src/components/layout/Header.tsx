@@ -107,7 +107,14 @@ export default function Header() {
                 <div className="absolute right-0 top-full hidden w-56 pt-2 group-hover:block animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-2xl">
                     <div className="border-b border-neutral-100 px-4 py-3 bg-neutral-50/50">
-                      <p className="truncate text-sm font-bold text-neutral-900">{user.fullName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-bold text-neutral-900">{user.fullName}</p>
+                        {user.roles?.includes("merchant") && (
+                          <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">
+                            Merchant
+                          </span>
+                        )}
+                      </div>
                       <p className="truncate text-xs text-neutral-500">{user.email}</p>
                     </div>
                     <div className="py-1">

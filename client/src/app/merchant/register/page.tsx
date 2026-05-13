@@ -142,6 +142,12 @@ export default function MerchantRegisterPage() {
     if (isMounted && !isAuthenticated && !localStorage.getItem("accessToken")) {
       router.push("/login?redirect=/merchant/register");
     } else if (user && isMounted) {
+      // If already a merchant, redirect to dashboard
+      if (user.roles?.includes("merchant")) {
+        router.replace("/merchant/dashboard");
+        return;
+      }
+      
       // Initialize phone if available, otherwise make it editable by default
       if (user.phone && !form.phone) {
         setForm(prev => ({ ...prev, phone: user.phone }));

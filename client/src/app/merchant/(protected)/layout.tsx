@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -42,7 +42,23 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuthStore();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      if (!isAuthenticated) {
+        router.replace("/login?redirect=/merchant/dashboard");
+      } else if (!user?.roles?.includes("merchant")) {
+        router.replace("/merchant/register");
+      }
+    }
+  }, [isMounted, isAuthenticated, user, router]);
 
   const menuItems = [
     { href: "/merchant/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
@@ -50,6 +66,10 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     { href: "/merchant/orders", icon: ClipboardList, label: "Đơn hàng" },
     { href: "/merchant/settings", icon: Settings, label: "Cài đặt Shop" },
   ];
+
+  if (!isMounted || !isAuthenticated || !user?.roles?.includes("merchant")) {
+    return null; // Don't flash the layout before redirecting
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">

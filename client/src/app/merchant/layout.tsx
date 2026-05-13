@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -49,7 +49,15 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const [status, setStatus] = useState<"loading" | "authorized" | "redirecting">("loading");
 
+  // EXEMPTION: Trang đăng ký không cần Auth Guard và không có Sidebar
+  const isRegisterPage = pathname === "/merchant/register";
+
   useEffect(() => {
+    if (isRegisterPage) {
+      setStatus("authorized");
+      return;
+    }
+
     let mounted = true;
 
     const verifyAndFetch = async () => {
@@ -69,7 +77,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
         }
 
         // 2. STATE DEAD (Self-Healing Fetch)
-        console.log("[AUTH] Guard self-healing triggered...");
+        console.log("[AUTH] Merchant Layout self-healing triggered...");
         const token = localStorage.getItem("accessToken");
         if (!token) {
           setAuth(null, false);
@@ -104,7 +112,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           router.replace("/login?redirect=/merchant/dashboard");
         }
       } catch (error) {
-        console.error("[AUTH] Self-healing failed:", error);
+        console.error("[AUTH] Layout self-healing failed:", error);
         setAuth(null, false);
         setIsInitialized(true);
         if (mounted) setStatus("redirecting");
@@ -115,22 +123,28 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     verifyAndFetch();
 
     return () => { mounted = false; };
-  }, [isInitialized, user, router, setAuth, setIsInitialized]);
+  }, [isInitialized, user, router, pathname, isRegisterPage, setAuth, setIsInitialized]);
 
-  // Loading / Redirecting state
+  // Case 1: Trang đăng ký - Trả về children luôn
+  if (isRegisterPage) {
+    return <>{children}</>;
+  }
+
+  // Case 2: Đang tải hoặc đang chuyển hướng
   if (status === "loading" || status === "redirecting") {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center text-center">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
           <p className="mt-4 text-sm font-medium text-gray-600">
-            {status === "loading" ? "Đang tải dữ liệu không gian làm việc..." : "Đang chuyển hướng..."}
+            {status === "loading" ? "Đang chuẩn bị không gian làm việc..." : "Đang chuyển hướng..."}
           </p>
         </div>
       </div>
     );
   }
 
+  // Case 3: Đã xác thực - Render Dashboard thực sự
   const menuItems = [
     { href: "/merchant/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
     { href: "/merchant/products", icon: Package, label: "Sản phẩm" },

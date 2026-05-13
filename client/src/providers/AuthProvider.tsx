@@ -15,6 +15,7 @@ export default function AuthProvider({
 }) {
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const setInitialized = useAuthStore((state) => state.setInitialized);
   
   // We use a local ref to track if we've already tried to initialize
   // This persists across re-renders but not hard refreshes.
@@ -33,6 +34,7 @@ export default function AuthProvider({
       if (!token) {
         console.log("[AUTH DEBUG] No token, guest mode.");
         setIsInitializing(false);
+        setInitialized(true);
         return;
       }
 
@@ -44,14 +46,14 @@ export default function AuthProvider({
         }
       } catch (error) {
         console.error("[AUTH DEBUG] Session restoration failed (likely expired or server down).");
-        // Only clear if we're sure it's an auth error, but for guest mode we just stop loading
       } finally {
         setIsInitializing(false);
+        setInitialized(true);
       }
     };
 
     initAuth();
-  }, [setAuth, clearAuth]);
+  }, [setAuth, clearAuth, setInitialized]);
 
   // FIX: We no longer return a full-screen blocking div.
   // Instead, we always render the children.

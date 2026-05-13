@@ -41,24 +41,61 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
 );
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const { user, isInitialized } = useAuthStore();
+  const [isChecking, setIsChecking] = useState(true);
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
-  const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    let mounted = true;
 
-  useEffect(() => {
-    if (isMounted) {
-      if (!isAuthenticated) {
+    const verifyAccess = async () => {
+      // 1. Wait for global AuthProvider to finish loading
+      if (!isInitialized) return;
+
+      // 2. If no user after initialization, kick to login
+      if (!user) {
         router.replace("/login?redirect=/merchant/dashboard");
-      } else if (!user?.roles?.includes("merchant")) {
-        router.replace("/merchant/register");
+        return;
       }
-    }
-  }, [isMounted, isAuthenticated, user, router]);
+
+      // 3. If user is not a merchant, kick to register
+      if (!user.roles?.includes("merchant")) {
+        router.replace("/merchant/register");
+        return;
+      }
+
+      // 4. Unblock the UI
+      if (mounted) setIsChecking(false);
+    };
+
+    verifyAccess();
+
+    // Ultimate BFCache Failsafe: Unblock after 3 seconds if stuck
+    const failsafe = setTimeout(() => {
+      if (mounted && isInitialized && user) {
+        setIsChecking(false);
+      }
+    }, 3000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(failsafe);
+    };
+  }, [isInitialized, user, router]);
+
+  // Block rendering until global auth is ready AND local checks are done
+  if (!isInitialized || isChecking) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 animate-spin items-center justify-center rounded-full border-4 border-primary-100 border-t-primary-500"></div>
+          <h2 className="mt-6 text-lg font-bold text-neutral-900">Nyan Market</h2>
+          <p className="mt-2 text-sm font-medium text-gray-500">Đang chuẩn bị không gian làm việc...</p>
+        </div>
+      </div>
+    );
+  }
 
   const menuItems = [
     { href: "/merchant/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
@@ -66,19 +103,6 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     { href: "/merchant/orders", icon: ClipboardList, label: "Đơn hàng" },
     { href: "/merchant/settings", icon: Settings, label: "Cài đặt Shop" },
   ];
-
-  if (!isMounted || !isAuthenticated || !user?.roles?.includes("merchant")) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-white">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-500 shadow-sm">
-          <Store size={24} className="animate-pulse" />
-        </div>
-        <p className="animate-pulse text-sm font-bold text-gray-500">
-          Đang chuẩn bị không gian làm việc...
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">

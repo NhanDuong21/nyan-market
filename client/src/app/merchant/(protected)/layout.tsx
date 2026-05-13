@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
@@ -42,50 +42,22 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
   const { user, isInitialized } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    let mounted = true;
+    // Handle redirects ONLY here. DO NOT manage loading state here.
+    if (!isInitialized) return;
 
-    const verifyAccess = async () => {
-      // 1. Wait for global AuthProvider to finish loading
-      if (!isInitialized) return;
-
-      // 2. If no user after initialization, kick to login
-      if (!user) {
-        router.replace("/login?redirect=/merchant/dashboard");
-        return;
-      }
-
-      // 3. If user is not a merchant, kick to register
-      if (!user.roles?.includes("merchant")) {
-        router.replace("/merchant/register");
-        return;
-      }
-
-      // 4. Unblock the UI
-      if (mounted) setIsChecking(false);
-    };
-
-    verifyAccess();
-
-    // Ultimate BFCache Failsafe: Unblock after 3 seconds if stuck
-    const failsafe = setTimeout(() => {
-      if (mounted && isInitialized && user) {
-        setIsChecking(false);
-      }
-    }, 3000);
-
-    return () => {
-      mounted = false;
-      clearTimeout(failsafe);
-    };
+    if (!user) {
+      router.replace("/login?redirect=/merchant/dashboard");
+    } else if (!user.roles?.includes("merchant")) {
+      router.replace("/merchant/register");
+    }
   }, [isInitialized, user, router]);
 
-  // Block rendering until global auth is ready AND local checks are done
-  if (!isInitialized || isChecking) {
+  // 1. Global Auth is still loading (First paint or race condition)
+  if (!isInitialized) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 px-4">
         <div className="flex flex-col items-center text-center">
@@ -97,6 +69,21 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     );
   }
 
+  // 2. Initialized, but unauthorized. 
+  // (The useEffect is about to redirect them. We return the loading screen here to prevent a UI flash of the dashboard).
+  if (!user || !user.roles?.includes("merchant")) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 animate-spin items-center justify-center rounded-full border-4 border-primary-100 border-t-primary-500"></div>
+          <p className="mt-6 text-sm font-medium text-gray-500">Đang chuyển hướng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Fully Authorized. Render IMMEDIATELY. No local state delays.
+  // This block is reached instantly during BFCache restoration.
   const menuItems = [
     { href: "/merchant/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
     { href: "/merchant/products", icon: Package, label: "Sản phẩm" },

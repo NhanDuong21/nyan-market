@@ -18,7 +18,7 @@ import {
   UploadCloud
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-import { registerShop } from "@/services/shop.service";
+import { registerShop, getMyShop } from "@/services/shop.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 // ===== SUB-COMPONENTS (Tách ra ngoài scope main để tối ưu) =====
@@ -128,6 +128,8 @@ export default function MerchantRegisterPage() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isPhoneEditable, setIsPhoneEditable] = useState(false);
 
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
   // KYC Upload States
   const [idCardFrontFile, setIdCardFrontFile] = useState<File | null>(null);
   const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
@@ -154,6 +156,29 @@ export default function MerchantRegisterPage() {
       } else if (!user.phone) {
         setIsPhoneEditable(true);
       }
+
+      // Check if user has already submitted a shop application
+      const checkExistingShop = async () => {
+        try {
+          const shop = await getMyShop();
+          if (shop) {
+            if (shop.status === "pending") {
+              router.replace("/merchant/pending");
+            } else if (shop.status === "active") {
+              router.replace("/merchant/dashboard");
+            } else {
+              setIsCheckingStatus(false);
+            }
+          } else {
+            setIsCheckingStatus(false);
+          }
+        } catch (error) {
+          console.error("Error checking shop status", error);
+          setIsCheckingStatus(false);
+        }
+      };
+
+      checkExistingShop();
     }
   }, [isMounted, isAuthenticated, router, user]);
 
@@ -165,7 +190,7 @@ export default function MerchantRegisterPage() {
     };
   }, [idCardFrontPreview, idCardBackPreview]);
 
-  if (!isMounted) {
+  if (!isMounted || isCheckingStatus) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-gray-50">
         <Loader2 className="animate-spin text-primary-400" size={48} />

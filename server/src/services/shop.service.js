@@ -90,4 +90,13 @@ const createShop = async (userId, shopData, files) => {
   return newShop;
 };
 
-module.exports = { createShop };
+/**
+ * Lấy thông tin shop của user hiện tại.
+ * @param {string} userId - ID của owner
+ * @returns {Promise<Object|null>} Shop document
+ */
+const getShopByOwnerId = async (userId) => {
+  return await Shop.findOne({ owner: userId });
+};
+
+module.exports = { createShop, getShopByOwnerId };

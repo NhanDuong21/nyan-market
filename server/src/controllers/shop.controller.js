@@ -31,6 +31,30 @@ const registerShop = async (req, res) => {
   }
 };
 
+// GET /api/v1/shops/my-shop
+// Lấy thông tin shop của user hiện tại
+const getMyShop = async (req, res) => {
+  try {
+    const shop = await shopService.getShopByOwnerId(req.user.id);
+    if (!shop) {
+      return res.status(404).json({ success: false, message: "Chưa đăng ký shop" });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Lấy thông tin shop thành công",
+      data: { shop },
+    });
+  } catch (error) {
+    console.error("Get My Shop Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi server. Vui lòng thử lại.",
+    });
+  }
+};
+
 module.exports = {
   registerShop,
+  getMyShop,
 };

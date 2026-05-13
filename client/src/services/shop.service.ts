@@ -70,3 +70,35 @@ export async function registerShop(
     throw new Error("Không thể kết nối đến server");
   }
 }
+
+/**
+ * Lấy thông tin shop của user hiện tại.
+ * Nếu không có shop, trả về null.
+ */
+export async function getMyShop(): Promise<any | null> {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) return null;
+
+    const res = await fetch(`${API_URL}/shops/my-shop`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 404) {
+      return null;
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      return data.data.shop;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin shop:", error);
+    return null;
+  }
+}

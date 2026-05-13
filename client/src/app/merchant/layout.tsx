@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -15,6 +15,7 @@ import {
   User
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import MerchantGuard from "@/components/auth/MerchantGuard";
 
 // ===== UI COMPONENTS =====
 
@@ -44,107 +45,16 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
 // ===== MAIN LAYOUT =====
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
-  const { user, isInitialized, setAuth, setIsInitialized } = useAuthStore();
-  const router = useRouter();
+  const { user } = useAuthStore();
   const pathname = usePathname();
-  const [status, setStatus] = useState<"loading" | "authorized" | "redirecting">("loading");
-
+  
   // EXEMPTION: Trang đăng ký không cần Auth Guard và không có Sidebar
   const isRegisterPage = pathname === "/merchant/register";
 
-  useEffect(() => {
-    if (isRegisterPage) {
-      setStatus("authorized");
-      return;
-    }
-
-    let mounted = true;
-
-    const verifyAndFetch = async () => {
-      try {
-        // 1. STATE ALREADY INITIALIZED (Happy Path / BFCache Restore)
-        if (isInitialized) {
-          if (!user) {
-            if (mounted) setStatus("redirecting");
-            router.replace("/login?redirect=/merchant/dashboard");
-          } else if (!user.roles?.includes("merchant")) {
-            if (mounted) setStatus("redirecting");
-            router.replace("/merchant/register");
-          } else {
-            if (mounted) setStatus("authorized");
-          }
-          return;
-        }
-
-        // 2. STATE DEAD (Self-Healing Fetch)
-        console.log("[AUTH] Merchant Layout self-healing triggered...");
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-          setAuth(null, false);
-          setIsInitialized(true);
-          if (mounted) setStatus("redirecting");
-          router.replace("/login?redirect=/merchant/dashboard");
-          return;
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-        const res = await fetch(`${apiUrl}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const fetchedUser = data.data.user;
-          setAuth(fetchedUser, true);
-          setIsInitialized(true);
-
-          if (!fetchedUser?.roles?.includes("merchant")) {
-            if (mounted) setStatus("redirecting");
-            router.replace("/merchant/register");
-          } else {
-            if (mounted) setStatus("authorized");
-          }
-        } else {
-          localStorage.removeItem("accessToken");
-          setAuth(null, false);
-          setIsInitialized(true);
-          if (mounted) setStatus("redirecting");
-          router.replace("/login?redirect=/merchant/dashboard");
-        }
-      } catch (error) {
-        console.error("[AUTH] Layout self-healing failed:", error);
-        setAuth(null, false);
-        setIsInitialized(true);
-        if (mounted) setStatus("redirecting");
-        router.replace("/login?redirect=/merchant/dashboard");
-      }
-    };
-
-    verifyAndFetch();
-
-    return () => { mounted = false; };
-  }, [isInitialized, user, router, pathname, isRegisterPage, setAuth, setIsInitialized]);
-
-  // Case 1: Trang đăng ký - Trả về children luôn
   if (isRegisterPage) {
     return <>{children}</>;
   }
 
-  // Case 2: Đang tải hoặc đang chuyển hướng
-  if (status === "loading" || status === "redirecting") {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center text-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
-          <p className="mt-4 text-sm font-medium text-gray-600">
-            {status === "loading" ? "Đang chuẩn bị không gian làm việc..." : "Đang chuyển hướng..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Case 3: Đã xác thực - Render Dashboard thực sự
   const menuItems = [
     { href: "/merchant/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
     { href: "/merchant/products", icon: Package, label: "Sản phẩm" },
@@ -227,10 +137,12 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           </div>
         </header>
 
-        {/* Dynamic Page Content */}
-        <main className="p-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          {children}
-        </main>
+        {/* Dynamic Page Content Protected by MerchantGuard */}
+        <MerchantGuard>
+          <main className="p-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {children}
+          </main>
+        </MerchantGuard>
       </div>
     </div>
   );

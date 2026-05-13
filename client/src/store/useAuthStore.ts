@@ -1,21 +1,25 @@
 // client/src/store/useAuthStore.ts
-import { create } from "zustand";
-import { UserData } from "@/services/auth.service";
+import { create } from 'zustand';
 
 interface AuthState {
-  user: UserData | null;
+  user: any | null;
   isAuthenticated: boolean;
-  isInitialized: boolean;
-  setAuth: (user: UserData) => void;
-  clearAuth: () => void;
-  setInitialized: (value: boolean) => void;
+  isInitialized: boolean; // <-- Biến sinh tử đây
+  setAuth: (user: any | null, isAuthenticated: boolean) => void;
+  setIsInitialized: (status: boolean) => void; // <-- Hàm cập nhật
+  logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
-  isInitialized: false,
-  setAuth: (user) => set({ user, isAuthenticated: true }),
-  clearAuth: () => set({ user: null, isAuthenticated: false }),
-  setInitialized: (value) => set({ isInitialized: value }),
+  isInitialized: false, // Mặc định ban đầu là chưa khởi tạo
+  
+  setAuth: (user, isAuthenticated) => set({ user, isAuthenticated }),
+  setIsInitialized: (status) => set({ isInitialized: status }),
+  
+  logout: () => {
+    localStorage.removeItem("accessToken");
+    set({ user: null, isAuthenticated: false, isInitialized: true });
+  },
 }));

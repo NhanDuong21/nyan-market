@@ -72,31 +72,31 @@
 
 ### Backend
 
-- [ ] Tạo Mongoose Models: `Shop`, `Product`, `Category`
-- [ ] API: `POST /shops/register` — Đăng ký mở shop (status: `pending`)
-- [ ] API: `POST /shops/kyc` — Upload tài liệu KYC (Cloudinary)
+- [x] Tạo Mongoose Models: `Shop`, `Product`, `Category`
+- [x] API: `POST /shops/register` — Đăng ký mở shop (status: `pending`)
+- [x] API: `POST /shops/kyc` — Upload tài liệu KYC (Cloudinary)
 - [ ] API: `GET /shops/my-shop` — Lấy thông tin shop của merchant
 - [ ] API: `PUT /shops/my-shop` — Cập nhật thông tin shop
-- [ ] Middleware: `isMerchant` — Check role + shop status `active`
-- [ ] Tích hợp Cloudinary SDK — Upload/Delete/Transform ảnh
-- [ ] API: `POST /products` — Tạo sản phẩm mới (kèm variants)
-- [ ] API: `GET /products/my-products` — Danh sách SP của merchant (phân trang)
+- [x] Middleware: `isMerchant` — Check role + shop status `active`
+- [x] Tích hợp Cloudinary SDK — Upload/Delete/Transform ảnh
+- [x] API: `POST /products` — Tạo sản phẩm mới (kèm variants)
+- [x] API: `GET /products/my-products` — Danh sách SP của merchant (phân trang)
 - [ ] API: `PUT /products/:id` — Cập nhật sản phẩm
 - [ ] API: `DELETE /products/:id` — Soft delete sản phẩm
 - [ ] API: `PATCH /products/:id/stock` — Cập nhật tồn kho (atomic `$inc`)
-- [ ] API: `GET /categories` — Danh sách danh mục (tree structure)
+- [x] API: `GET /categories` — Danh sách danh mục (tree structure)
 - [ ] API: `POST /categories` — Tạo danh mục (Admin only)
 - [ ] Validation: Kiểm tra tên shop unique, file upload format/size
 - [ ] Auto-generate slug cho Shop và Product
 
 ### Frontend
 
-- [ ] Trang Đăng ký Shop — `/merchant/register` **(CSR)**: Multi-step form (Info → KYC → Submit)
-- [ ] Trang Chờ duyệt — `/merchant/pending` **(CSR)**: Hiển thị status pending/rejected
-- [ ] Layout Merchant Dashboard — `/merchant/*` **(CSR)**: Sidebar navigation, header
-- [ ] Trang Quản lý SP — `/merchant/products` **(CSR)**: Table danh sách, search, filter
-- [ ] Form Thêm/Sửa SP — `/merchant/products/new` & `edit` **(CSR)**
-- [ ] Component: Image uploader (Drag & drop, preview, max 9 ảnh)
+- [x] Trang Đăng ký Shop — `/merchant/register` **(CSR)**: Multi-step form (Info → KYC → Submit)
+- [x] Trang Chờ duyệt — `/merchant/pending` **(CSR)**: Hiển thị status pending/rejected
+- [x] Layout Merchant Dashboard — `/merchant/*` **(CSR)**: Sidebar navigation, header
+- [x] Trang Quản lý SP — `/merchant/products` **(CSR)**: Table danh sách, search, filter
+- [x] Form Thêm/Sửa SP — `/merchant/products/new` & `edit` **(CSR)**
+- [x] Component: Image uploader (Drag & drop, preview, max 9 ảnh)
 - [ ] Component: Variant manager (Thêm/xóa biến thể, SKU, giá riêng)
 - [ ] Trang Quản lý tồn kho — `/merchant/inventory` **(CSR)**: Low stock alerts
 - [ ] Component: Category selector (Dropdown tree)
@@ -118,7 +118,7 @@
 
 ### Backend
 
-- [ ] API: `GET /products` — Danh sách SP công khai (filter, sort, phân trang)
+- [x] API: `GET /products` — Danh sách SP công khai (filter, sort, phân trang)
 - [ ] API: `GET /products/:slug` — Chi tiết SP (populate shop, category)
 - [ ] API: `GET /products/search?q=` — Full-text search (weighted)
 - [ ] API: `GET /categories/:slug/products` — SP theo danh mục
@@ -132,11 +132,11 @@
 
 ### Frontend
 
-- [ ] **Trang chủ** — `/` **(SSG + ISR revalidate 60s)**
-  - [ ] Hero Banner slider (Primary Yellow gradient background)
-  - [ ] Danh mục nổi bật (grid icons)
-  - [ ] Sản phẩm bán chạy (carousel)
-  - [ ] Sản phẩm mới nhất (grid)
+- [x] **Trang chủ** — `/` **(SSG + ISR revalidate 60s)**
+  - [x] Hero Banner slider (Primary Yellow gradient background)
+  - [x] Danh mục nổi bật (grid icons)
+  - [x] Sản phẩm bán chạy (carousel)
+  - [x] Sản phẩm mới nhất (grid)
   - [ ] Flash sale section (countdown timer)
 - [ ] **Trang danh mục** — `/category/:slug` **(ISR revalidate 120s)**
   - [ ] Sidebar filter (giá, đánh giá, địa điểm)
@@ -235,9 +235,9 @@
 
 ### Backend
 
-- [ ] API: `GET /admin/merchants` — Danh sách merchant (filter by status)
-- [ ] API: `PATCH /admin/merchants/:id/approve` — Phê duyệt shop
-- [ ] API: `PATCH /admin/merchants/:id/reject` — Từ chối (kèm lý do)
+- [x] API: `GET /admin/merchants` — Danh sách merchant (filter by status)
+- [x] API: `PATCH /admin/merchants/:id/approve` — Phê duyệt shop
+- [x] API: `PATCH /admin/merchants/:id/reject` — Từ chối (kèm lý do)
 - [ ] API: `GET /admin/users` — Danh sách users (search, filter, phân trang)
 - [ ] API: `PATCH /admin/users/:id/ban` — Ban user
 - [ ] API: `PATCH /admin/users/:id/unban` — Unban user
@@ -255,14 +255,14 @@
 
 ### Frontend
 
-- [ ] **Layout Admin** — `/admin/*` **(CSR)**: Sidebar, topbar, breadcrumb
+- [x] **Layout Admin** — `/admin/*` **(CSR)**: Sidebar, topbar, breadcrumb
 - [ ] **Admin Dashboard** — `/admin` **(CSR)**
   - [ ] KPI Cards: GMV, Tổng đơn, Users mới, Merchants mới
   - [ ] Area Chart: Doanh thu theo thời gian
   - [ ] Bar Chart: Tăng trưởng users/merchants
   - [ ] Table: Top merchants, Top sản phẩm
-- [ ] **Duyệt Merchant** — `/admin/merchants` **(CSR)**
-  - [ ] Table, Modal xem KYC, nút Approve/Reject
+- [x] **Duyệt Merchant** — `/admin/merchants` **(CSR)**
+  - [x] Table, Modal xem KYC, nút Approve/Reject
 - [ ] **Quản lý Users** — `/admin/users` **(CSR)**
   - [ ] Table, search, filter, Ban/Unban
 - [ ] **Quản lý Banners** — `/admin/banners` **(CSR)**: CRUD, drag-drop

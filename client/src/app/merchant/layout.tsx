@@ -47,10 +47,9 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
   const pathname = usePathname();
-  
-  // EXEMPTION: Trang đăng ký không cần Auth Guard và không có Sidebar
   const isRegisterPage = pathname === "/merchant/register";
 
+  // Trang đăng ký được miễn trừ hoàn toàn khỏi Sidebar và Guard
   if (isRegisterPage) {
     return <>{children}</>;
   }
@@ -64,10 +63,9 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">
-      {/* Sidebar */}
+      {/* Sidebar Component */}
       <aside className="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-100 bg-white">
         <div className="flex h-full flex-col">
-          {/* Logo Area */}
           <div className="flex h-16 items-center border-b border-gray-50 px-6">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-400 text-neutral-900">
@@ -77,7 +75,6 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
             </Link>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4">
             {menuItems.map((item) => (
               <SidebarItem
@@ -90,7 +87,6 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
             ))}
           </nav>
 
-          {/* Footer Navigation */}
           <div className="border-t border-gray-50 p-4">
             <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors">
               <LogOut size={20} />
@@ -100,9 +96,8 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 pl-64">
-        {/* Top Header */}
+        {/* Header Component */}
         <header className="sticky top-0 z-40 h-16 border-b border-gray-100 bg-white/80 backdrop-blur-md">
           <div className="flex h-full items-center justify-between px-8">
             <div className="flex items-center gap-4 text-gray-400">
@@ -137,9 +132,9 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           </div>
         </header>
 
-        {/* Dynamic Page Content Protected by MerchantGuard */}
+        {/* Lớp bảo vệ bao bọc nội dung động */}
         <MerchantGuard>
-          <main className="p-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <main className="p-8">
             {children}
           </main>
         </MerchantGuard>

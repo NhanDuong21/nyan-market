@@ -12,13 +12,29 @@ router.get("/", getProducts);
 router.get("/my-products", authenticate, authorize(["merchant"]), getMerchantProducts);
 
 // POST /api/v1/products — Đăng sản phẩm mới
-// Quyền: Phải đăng nhập và có role merchant
+// Quyền: Phải đăng nhập và có role merchant hoặc admin
 router.post(
   "/",
   authenticate,
-  authorize(["merchant"]),
+  authorize(["merchant", "admin"]),
   upload.array("images", 9),
   createProduct
+);
+
+// PUT /api/v1/products/:id — Cập nhật sản phẩm (future)
+router.put(
+  "/:id",
+  authenticate,
+  authorize(["merchant", "admin"]),
+  (req, res) => res.status(501).json({ message: "Not Implemented" })
+);
+
+// DELETE /api/v1/products/:id — Xóa sản phẩm (future)
+router.delete(
+  "/:id",
+  authenticate,
+  authorize(["merchant", "admin"]),
+  (req, res) => res.status(501).json({ message: "Not Implemented" })
 );
 
 module.exports = router;

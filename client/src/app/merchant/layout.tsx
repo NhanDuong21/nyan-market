@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -15,9 +15,8 @@ import {
   User
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import MerchantGuard from "@/components/auth/MerchantGuard";
 
-// ===== UI COMPONENTS =====
+// ===== SUB-COMPONENTS (SIDEBAR & HEADER) =====
 
 interface SidebarItemProps {
   href: string;
@@ -42,14 +41,38 @@ const SidebarItem = ({ href, icon: Icon, label, isActive }: SidebarItemProps) =>
   </Link>
 );
 
-// ===== MAIN LAYOUT =====
+// ===== MAIN MERCHANT LAYOUT =====
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
+  const router = useRouter();
   const pathname = usePathname();
+
   const isRegisterPage = pathname === "/merchant/register";
 
-  // Trang đăng ký được miễn trừ hoàn toàn khỏi Sidebar và Guard
+  useEffect(() => {
+    // Basic Auth Check: Chỉ chạy khi đã khởi tạo xong và không phải trang đăng ký
+    if (isInitialized && !isRegisterPage) {
+      const isMerchant = user?.role === "merchant" || user?.roles?.includes("merchant");
+      
+      if (!user) {
+        router.replace("/login?redirect=/merchant/dashboard");
+      } else if (!isMerchant) {
+        router.replace("/merchant/register");
+      }
+    }
+  }, [isInitialized, user, router, pathname, isRegisterPage]);
+
+  // 1. Hiển thị màn hình chờ đơn giản khi hệ thống Auth chưa sẵn sàng
+  if (!isInitialized) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-400 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  // 2. Trang đăng ký hiển thị độc lập (Không có Sidebar/Header)
   if (isRegisterPage) {
     return <>{children}</>;
   }
@@ -61,6 +84,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     { href: "/merchant/settings", icon: Settings, label: "Cài đặt Shop" },
   ];
 
+  // 3. Giao diện Kênh Người Bán chuẩn
   return (
     <div className="flex min-h-screen bg-gray-50/50">
       {/* Sidebar Component */}
@@ -104,7 +128,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
               <Search size={20} />
               <input 
                 type="text" 
-                placeholder="Tìm kiếm chức năng..." 
+                placeholder="Tìm kiếm..." 
                 className="bg-transparent text-sm outline-none placeholder:text-gray-400"
               />
             </div>
@@ -132,12 +156,9 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           </div>
         </header>
 
-        {/* Lớp bảo vệ bao bọc nội dung động */}
-        <MerchantGuard>
-          <main className="p-8">
-            {children}
-          </main>
-        </MerchantGuard>
+        <main className="p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

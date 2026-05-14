@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function AuthProvider({
@@ -9,11 +9,14 @@ export default function AuthProvider({
   children: React.ReactNode;
 }) {
   const { setAuth, setIsInitialized, isInitialized } = useAuthStore();
+  const initAttempted = useRef(false);
 
   useEffect(() => {
-    // [CHỐT CHẶN TỐI THƯỢNG]: Nếu đã khởi tạo rồi thì tuyệt đối không chạy lại.
-    // Điều này vô hiệu hóa hoàn toàn sự phá bĩnh của React 18 Strict Mode!
-    if (isInitialized) return;
+    // Nếu đã initialized qua cơ chế khác (ví dụ MerchantGuard) thì không chạy lại init nặng
+    // Nhưng vẫn phải đảm bảo effect này kết thúc êm đẹp
+    if (isInitialized && initAttempted.current) return;
+    
+    initAttempted.current = true;
 
     const initAuth = async () => {
       try {
@@ -23,10 +26,10 @@ export default function AuthProvider({
           return;
         }
 
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
         const res = await fetch(`${apiUrl}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         });
 
         if (res.ok) {
@@ -38,22 +41,23 @@ export default function AuthProvider({
         }
       } catch (error) {
         console.error("Lỗi khởi tạo Auth:", error);
-        setAuth(null, false);
+        // Không xóa token ở đây vì có thể do mạng lag, server sập tạm thời
       } finally {
-        // [QUAN TRỌNG NHẤT]: XÓA BỎ IF(MOUNTED).
-        // Zustand là State toàn cục, được phép cập nhật mọi lúc mọi nơi kể cả khi component đã bị unmount!
         setIsInitialized(true);
       }
     };
 
     initAuth();
 
-    // Hẹn giờ 3 giây: Mạng lag, server sập cũng phải mở cửa cho Layout chạy!
-    const failsafe = setTimeout(() => {
-      setIsInitialized(true);
-    }, 3000);
+    // Failsafe: Sau 2 giây nếu chưa xong cũng phải mở cửa
+    const timer = setTimeout(() => {
+      if (!useAuthStore.getState().isInitialized) {
+        console.warn("[AUTH] Failsafe triggered: Forced initialization.");
+        setIsInitialized(true);
+      }
+    }, 2000);
 
-    return () => clearTimeout(failsafe);
+    return () => clearTimeout(timer);
   }, [isInitialized, setAuth, setIsInitialized]);
 
   return <>{children}</>;

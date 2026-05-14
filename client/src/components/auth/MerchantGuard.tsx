@@ -5,28 +5,20 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 
 /**
- * MerchantGuard: Lớp bảo vệ không trạng thái nội bộ (Zero Local State).
- * Giải quyết triệt để lỗi BFCache bằng cách dựa thuần túy vào trạng thái đồng bộ của Zustand.
+ * MerchantGuard: Lớp bảo vệ kết hợp 2 giải pháp tối thượng.
+ * 1. Zero Local State: Loại bỏ hoàn toàn useState để tránh bẫy closure.
+ * 2. Native BFCache Killer: Sử dụng sự kiện pageshow để phá vỡ việc đóng băng useEffect của Next.js.
  */
 export default function MerchantGuard({ children }: { children: React.ReactNode }) {
   const { user, isInitialized, setAuth, setIsInitialized } = useAuthStore();
   const router = useRouter();
 
-  // 1. ĐÁNH GIÁ ĐỒNG BỘ: Không có độ trễ, không bị kẹt bởi local state.
+  // 1. TRẠNG THÁI RENDER ĐỒNG BỘ (Không sử dụng local state)
   const isMerchant = user?.role === "merchant" || user?.roles?.includes("merchant");
-  const isAuthorized = isInitialized && isMerchant;
+  const isAuthorized = isInitialized && !!user && isMerchant;
 
   useEffect(() => {
-    // Nếu trạng thái đã được đồng bộ và hợp lệ, không làm gì cả.
-    if (isInitialized) {
-      if (!isMerchant) {
-        router.replace("/merchant/register");
-      }
-      return;
-    }
-
-    // Tự phục hồi chỉ khi Zustand bị xóa (ví dụ: hard reload trên trang 404)
-    const healAuth = async () => {
+    const heal = async () => {
       const token = localStorage.getItem("accessToken");
       if (!token) {
         router.replace("/login?redirect=/merchant/dashboard");
@@ -34,19 +26,19 @@ export default function MerchantGuard({ children }: { children: React.ReactNode 
       }
 
       try {
-        console.log("[GUARD] Đang cưỡng chế đồng bộ trạng thái...");
+        console.log("[GUARD] Đang thực hiện tự phục hồi xác thực...");
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
         const res = await fetch(`${apiUrl}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store" // Quan trọng: Bỏ qua bộ nhớ đệm fetch của Next.js
         });
 
         if (res.ok) {
           const data = await res.json();
-          const fetchedUser = data.data.user;
-          setAuth(fetchedUser, true);
+          setAuth(data.data.user, true);
           setIsInitialized(true);
-
-          const hasRight = fetchedUser?.role === "merchant" || fetchedUser?.roles?.includes("merchant");
+          
+          const hasRight = data.data.user?.role === "merchant" || data.data.user?.roles?.includes("merchant");
           if (!hasRight) {
             router.replace("/merchant/register");
           }
@@ -54,7 +46,7 @@ export default function MerchantGuard({ children }: { children: React.ReactNode 
           throw new Error("Invalid Session");
         }
       } catch (error) {
-        console.error("[GUARD] Đồng bộ thất bại:", error);
+        console.error("[GUARD] Lỗi khôi phục xác thực:", error);
         localStorage.removeItem("accessToken");
         setAuth(null, false);
         setIsInitialized(true);
@@ -62,12 +54,29 @@ export default function MerchantGuard({ children }: { children: React.ReactNode 
       }
     };
 
-    healAuth();
+    // Kích hoạt 1: Mount bình thường hoặc Hard Reload (Zustand bị trống)
+    if (!isInitialized) {
+      heal();
+    } else if (isInitialized && !isMerchant) {
+      router.replace("/merchant/register");
+    }
+
+    // Kích hoạt 2: BFCache Killer (Người dùng nhấn nút Back)
+    // Phá vỡ chu kỳ useEffect bị đóng băng của Next.js khi quay lại từ trang 404.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted || !useAuthStore.getState().isInitialized) {
+        console.log("[GUARD] Phát hiện BFCache hoặc mất trạng thái, đang tự phục hồi...");
+        heal();
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, [isInitialized, isMerchant, router, setAuth, setIsInitialized]);
 
   return (
     <div className="relative h-full w-full">
-      {/* 2. LOADING SPINNER: Gắn chặt vào trạng thái Zustand. Nó sẽ biến mất ngay lập tức nếu isAuthorized là true. */}
+      {/* Spinner được liên kết trực tiếp với Zustand: Biến mất ngay khi isAuthorized là true */}
       {!isAuthorized && (
         <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-50/95 backdrop-blur-sm">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#FACC15] border-t-transparent"></div>
@@ -75,7 +84,7 @@ export default function MerchantGuard({ children }: { children: React.ReactNode 
         </div>
       )}
 
-      {/* 3. CSS OPACITY: Đảm bảo children không bao giờ bị unmount khỏi Virtual DOM của Next.js */}
+      {/* Giữ nguyên cấu trúc DOM để ổn định Router Cache của Next.js */}
       <div className={`h-full w-full transition-opacity duration-300 ${!isAuthorized ? "pointer-events-none opacity-0" : "opacity-100"}`}>
         {children}
       </div>

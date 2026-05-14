@@ -46,7 +46,7 @@ export default function LoginPage() {
 
       if (data.data) {
         // Cập nhật Zustand Store trước khi redirect
-        setAuth(data.data.user);
+        setAuth(data.data.user, true);
 
         // Lưu token và user vào localStorage
         localStorage.setItem("accessToken", data.data.accessToken);

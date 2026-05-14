@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 export default function Header() {
   const router = useRouter();
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   
   // Hydration mismatch fix
   const [isMounted, setIsMounted] = useState(false);
@@ -18,12 +18,8 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    // Xóa khỏi localStorage
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    
-    // Reset Zustand store
-    clearAuth();
+    // Reset Zustand store + LocalStorage (handled inside logout)
+    logout();
     
     // Redirect
     router.push("/login");
